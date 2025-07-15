@@ -1,0 +1,220 @@
+name: cutout
+
+networks:
+  internal:
+    external: false
+
+volumes:
+  django-db: {}
+  django-static: {}
+  object-data: {}
+
+services:
+  api-server:
+    image: cutout-api-server:dev
+    platform: linux/x86_64
+    build:
+      context: ../app
+      dockerfile: ../docker/Dockerfile
+      args:
+        UID: "${USERID:-1000}"
+    command: bash entrypoints/run_api_server.sh
+    # TODO: Hostname must be set to "spt3g" to get the right data base path in 
+    #       des_cutter/fitsfinder.py::get_archive_root().
+    hostname: spt3g
+    networks:
+      internal:
+        aliases:
+          - ${API_SERVER_HOST:-spt3g}
+    ports:
+      - 127.0.0.1:${API_SERVER_PORT:-8000}:${API_SERVER_PORT:-8000}
+    environment:
+      # Dev environment settings
+      MAKE_MIGRATIONS: "${MAKE_MIGRATIONS:-false}"
+      DATA_INIT: "${DATA_INIT:-true}"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-true}"
+      DEV_MODE: "${DEV_MODE:-true}" # Enable Django dev server instead of uvicorn
+      # Service configuration
+      API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
+      API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
+      API_PROXY_HOST: "${API_PROXY_HOST:-api-proxy}"
+      API_PROXY_PORT: "${API_PROXY_PORT:-4000}"
+      # Django base configuration
+      DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-admin}"
+      DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-password}"
+      DJANGO_SUPERUSER_EMAIL: "${DJANGO_SUPERUSER_EMAIL:-test@example.com}"
+      # Django database configuration
+      DATABASE_HOST: "${DATABASE_HOST:-django-db}"
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      DATABASE_DB: "${DATABASE_DB:-django}"
+      DATABASE_USER: "${DATABASE_USER:-django}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD:-password}"
+      # Message broker configuration
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
+      MESSAGE_BROKER_HOST: "${MESSAGE_BROKER_HOST:-rabbitmq}"
+      MESSAGE_BROKER_PORT: "${MESSAGE_BROKER_PORT:-5672}"
+      # Application configuration
+      APP_ROOT_DIR: "${APP_ROOT_DIR:-/opt}"
+      DES_CUTTER_DIR: "${DES_CUTTER_DIR:-/}"
+    volumes:
+      - "django-static:${APP_ROOT_DIR:-/opt}/app/static"
+      - ../data/files/des_archive:/des_archive
+      - ../data/db/duckdb:/data/db
+      - ../app:/opt/app
+
+  celery-worker:
+    image: cutout-celery-worker:dev
+    platform: linux/x86_64
+    build:
+      context: ../app
+      dockerfile: ../docker/Dockerfile
+      args:
+        UID: "${USERID:-1000}"
+    command: bash entrypoints/run_celery_worker.sh api,jobs
+    networks:
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 2
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+        limits:
+          cpus: "${CELERY_WORKER_LIMIT_CPUS:-4.0}"
+          memory: ${CELERY_WORKER_LIMIT_MEMORY:-4G}
+    environment:
+      # Dev environment settings
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-true}"
+      DEV_MODE: "${DEV_MODE:-true}" # Enable Django dev server instead of uvicorn
+      # Service configuration
+      API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
+      API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
+      # Django database configuration
+      DATABASE_HOST: "${DATABASE_HOST:-django-db}"
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      # Message broker configuration
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
+      MESSAGE_BROKER_HOST: "${MESSAGE_BROKER_HOST:-rabbitmq}"
+      MESSAGE_BROKER_PORT: "${MESSAGE_BROKER_PORT:-5672}"
+    volumes:
+      - ../data/files/des_archive:/des_archive
+      - ../data/db/duckdb:/data/db
+      - ../app:/opt/app
+
+  flower:
+    image: cutout-celery-worker:dev
+    platform: linux/x86_64
+    build:
+      context: ../app
+      dockerfile: ../docker/Dockerfile
+      args:
+        UID: "${USERID:-1000}"
+    command: bash entrypoints/run_flower.sh
+    networks:
+      internal:
+        aliases:
+          - ${FLOWER_HOST:-flower}
+    ports:
+      - 127.0.0.1:8888:${FLOWER_PORT:-8888}
+    environment:
+      # Service configuration
+      API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
+      API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
+      # Django database configuration
+      DATABASE_HOST: "${DATABASE_HOST:-django-db}"
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      # Message broker configuration
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
+      MESSAGE_BROKER_HOST: "${MESSAGE_BROKER_HOST:-rabbitmq}"
+      MESSAGE_BROKER_PORT: "${MESSAGE_BROKER_PORT:-5672}"
+      # Flower configuration
+      FLOWER_LOG_LEVEL: "${FLOWER_LOG_LEVEL:-INFO}"
+      FLOWER_URL_PREFIX: "${FLOWER_URL_PREFIX:-flower}"
+      FLOWER_HOST: "${FLOWER_HOST:-flower}"
+      FLOWER_PORT: "${FLOWER_PORT:-5555}"
+
+  django-db:
+    image: postgres:17
+    platform: linux/x86_64
+    restart: always
+    networks:
+      internal:
+        aliases:
+          - ${DATABASE_HOST:-django-db}
+    environment:
+      POSTGRES_USER: "${DATABASE_USER:-django}"
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD:-password}"
+      POSTGRES_DB: "${DATABASE_DB:-django}"
+    volumes:
+      - django-db:/var/lib/postgresql
+
+  api-proxy:
+    image: nginx:1.29
+    platform: linux/x86_64
+    # restart: always
+    networks:
+      - internal
+    ports:
+      - 127.0.0.1:${API_PROXY_PORT:-4000}:${API_PROXY_PORT:-4000}
+    environment:
+      API_PROXY_PORT: "${API_PROXY_PORT:-4000}"
+      API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
+      API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
+      FLOWER_URL_PREFIX: "${FLOWER_URL_PREFIX:-flower}"
+      FLOWER_HOST: "${FLOWER_HOST:-flower}"
+      FLOWER_PORT: "${FLOWER_PORT:-5555}"
+    volumes:
+      - django-static:/static
+      - ./nginx.conf.tpl:/etc/nginx/nginx.conf.tpl:ro
+      - ./nginx_init.sh:/docker-entrypoint.d/nginx_init.sh:ro
+      - ../app/entrypoints/wait-for-it.sh:/wait-for-it.sh
+
+  rabbitmq:
+    image: rabbitmq:4.1.2-alpine
+    platform: linux/x86_64
+    restart: always
+    networks:
+      internal:
+        aliases:
+          - ${MESSAGE_BROKER_HOST:-rabbitmq}
+    ports:
+      - 127.0.0.1:${MESSAGE_BROKER_PORT:-5672}:${MESSAGE_BROKER_PORT:-5672}
+      - 127.0.0.1:${MESSAGE_BROKER_MANAGEMENT_PORT:-15672}:${MESSAGE_BROKER_MANAGEMENT_PORT:-15672}
+    environment:
+      # Message broker configuration
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
+      MESSAGE_BROKER_HOST: "${MESSAGE_BROKER_HOST:-rabbitmq}"
+      MESSAGE_BROKER_PORT: "${MESSAGE_BROKER_PORT:-5672}"
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status"]
+      interval: 5s
+      timeout: 20s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 127.0.0.1:${REDIS_PORT:-6379}:6379
+    networks:
+      - internal
+
+  # object-store:
+  #   image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
+  #   platform: linux/x86_64
+  #   ports:
+  #     - 127.0.0.1:${S3_CONSOLE_PORT:-9001}:${S3_CONSOLE_PORT:-9001}
+  #     - 127.0.0.1:${S3_SERVER_PORT:-9000}:${S3_SERVER_PORT:-9000}
+  #   networks:
+  #     - internal
+  #   command:
+  #   - server
+  #   - /data
+  #   - --console-address
+  #   - ":${S3_CONSOLE_PORT:-9001}"
+  #   volumes:
+  #     - object-data:/data

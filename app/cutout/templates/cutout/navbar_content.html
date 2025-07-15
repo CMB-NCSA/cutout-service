@@ -1,0 +1,14 @@
+{% load django_bootstrap5 %}
+{% load static %}
+
+<li class="nav-item">
+  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <!-- <img src="{% static 'images/logo_banner.png' %}" style="max-height: 2rem;" /> -->
+    {{ title }}
+  </a>
+  <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="navbarDropdown">
+    <li>
+      <a class="dropdown-item" title="Home" href="{% url 'home' %}"><i class="bi bi-house"></i>Home</a>
+    </li>
+  </ul>
+</li>

@@ -1,0 +1,72 @@
+{% load static django_bootstrap5 %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <!-- Bootstrap CSS -->
+    {% bootstrap_css %}
+      {% block additional_css %}
+    {% endblock %}
+
+    {% bootstrap_javascript %}
+
+    <title>{% block title %}{% endblock %}</title>
+    <style>
+      main {
+        margin-bottom: 10rem;
+      }
+      footer {
+        position: fixed;
+        padding: 20px;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        background-color: white;
+        color: white;
+      }
+      .content {
+        margin-top: 5rem;
+      }
+      i.bi {
+        margin-right: 0.4rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-full" aria-controls="navbar-full" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar-full">
+        <div class="container-fluid d-flex">
+          <ul class="navbar-nav mr-auto d-flex align-items-center">
+            {% include 'cutout/navbar_content.html' %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main role="main" class="container">
+      <div class="content">
+        {% block content %}
+        {% endblock %}
+      </div>
+    </main>
+    <div class="container">
+      {% block footer %}
+        {% include 'cutout/footer.html' %}
+      {% endblock %}
+    </div>
+  </body>
+
+  {% block javascript %}{% endblock %}
+  {% block extra_javascript %}{% endblock %}
+</html>

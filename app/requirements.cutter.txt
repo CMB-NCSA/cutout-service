@@ -1,0 +1,9 @@
+fitsio
+astropy
+pandas
+pyyaml
+python-magic
+matplotlib
+oracledb
+scipy
+duckdb
