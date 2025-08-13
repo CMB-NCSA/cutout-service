@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.cutout_server.service.host | quote }}
+spec:
+  selector:
+    app: {{ .Values.cutout_server.service.host | quote }}
+  ports:
+  - name: server
+    port: {{ .Values.cutout_server.service.port }}
+    protocol: TCP
+    targetPort: {{ .Values.cutout_server.service.port }}
+  - name: proxy
+    port: {{ .Values.cutout_server.service.proxy_port }}
+    protocol: TCP
+    targetPort: {{ .Values.cutout_server.service.proxy_port }}

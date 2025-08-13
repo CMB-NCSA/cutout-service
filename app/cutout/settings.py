@@ -5,15 +5,20 @@ from corsheaders.defaults import default_headers
 
 django_base_dir = Path(__file__).resolve().parent.parent
 
-APP_VERSION = '0.0.1'
+APP_VERSION = '0.1.0'
+
+# Django base settings
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-dummy-secret')
+DJANGO_SUPERUSER_USERNAME = os.getenv('DJANGO_SUPERUSER_USERNAME', 'admin')
+
 APP_ROOT_DIR = os.environ.get('APP_ROOT_DIR', '/opt')
 assert os.path.isabs(APP_ROOT_DIR)
+S3_BASE_DIR = os.environ.get('S3_BASE_DIR', '').strip('/')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-dummy-secret')
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
+# Set JOB_SCRATCH_MAX_SIZE to 0 to determine scratch volume capacity using os.statvfs
+JOB_SCRATCH_MAX_SIZE = int(float(os.getenv('JOB_SCRATCH_MAX_SIZE', str(0 * 1024**3))))  # 0 GiB
+JOB_SCRATCH_FREE_SPACE = int(float(os.getenv('JOB_SCRATCH_FREE_SPACE', str(5 * 1024**3))))  # 5 GiB
 
 # API_SERVER_HOST is the internal service name
 API_SERVER_HOST = os.environ.get("API_SERVER_HOST", "api-server")

@@ -1,0 +1,183 @@
+common:
+  image:
+    repo: hub.ncsa.illinois.edu/des-public/cutout-service
+    tag: dev
+    imagePullPolicy: Always
+  uid: 1000
+  annotations: {}
+    # keel.sh/policy: "force"
+    # keel.sh/trigger: "poll"
+    # keel.sh/pollSchedule: "@every 10m"
+
+cutout_server:
+  enabled: true
+  replicaCount: 1
+  app_root_dir: /opt
+  data_init: true
+  service:
+    host: api-server
+    port: 8000
+    proxy_host: api-server-proxy
+    proxy_port: 8080
+  django_debug: "false"
+  log_level: "WARNING"
+  ingress:
+    hostnames: "descut.dev.musesframework.io"
+    basePath: ""
+  persistence:
+    django_static:
+      size: 100Mi
+    job_scratch:
+      # Setting storageClass to "emptyDir" will define an emptyDir volume instead of a persistent volume.
+      # In this case, the specified size will be set as the emptyDir.sizeLimit value.
+      storageClass: "emptyDir"
+      size: 12Gi
+      max_used_space: 10737418240
+      min_free_space: 3221225472
+  api_rate_limit:
+    # API calls per minute
+    anon: 30
+    # API calls per second
+    user: 30
+    # API calls per second
+    download: 30
+  proxy:
+    image:
+      repository: "nginx"
+      tag: "1.27-alpine"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    securityContext:
+      capabilities:
+        drop:
+        - ALL
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 101
+      runAsGroup: 101
+  resources:
+    requests:
+      cpu: '500m'
+      memory: 100Mi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+  auth:
+    oidc_op_authorization_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/auth"
+    oidc_op_logout_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/logout"
+    oidc_op_token_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/token"
+    oidc_op_user_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/userinfo"
+    oidc_op_jwks_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/certs"
+
+object_store:
+  service_url: "https://ncsa.osn.xsede.org:443"
+  s3_bucket: " phy240006-bucket01"
+  s3_region: "osn"
+  s3_base_dir: "apps/descut/dev/"
+
+flower:
+  enabled: false
+  replicaCount: 1
+  flower_unauthenticated_api: false
+  port: 5555
+  # TODO: Consolidate the ingress spec with the oauth2-proxy config
+  ingress:
+    hostname: "descut.dev.musesframework.io"
+    basePath: flower
+
+celery:
+  log_level: "INFO"
+  task_time_limit: 129600
+  task_soft_time_limit: 129400
+  beat:
+    replicaCount: 1
+  workers_api:
+    replicaCount: 2
+    concurrency: 4
+    resources:
+      requests:
+        cpu: '1'
+        memory: 100Mi
+      limits:
+        cpu: '4'
+        memory: 4Gi
+  workers:
+    replicaCount: 2
+    concurrency: 12
+    resources:
+      requests:
+        cpu: '2'
+        memory: 1Gi
+      limits:
+        cpu: '12'
+        memory: 48Gi
+
+database:
+  enabled: true
+  log_level: "debug"
+  description: "Django database"
+  clusterName: "django-db"
+  replicaCount: 3
+  port: 5432
+  initdb:
+    database: "django"
+    username: "django"
+    existingSecret: "database"
+  storage:
+    storageClass: "longhorn"
+    size: "5Gi"
+    accessModes:
+    - ReadWriteMany
+
+rabbitmq:
+  enabled: true
+  fullnameOverride: "rabbitmq"
+  global:
+    storageClass: "longhorn"
+  auth:
+    username: "foofoo"
+    existingPasswordSecret: rabbitmq-auth
+    existingErlangSecret: rabbitmq-auth
+  service:
+    ports:
+      amqp: 5672
+      manager: 15672
+
+minio:
+  enabled: false
+  fullnameOverride: "minio"
+  containerPorts:
+    api: 9000
+  auth:
+    existingSecret: "s3-credentials"
+    rootUserSecretKey: "AWS_ACCESS_KEY_ID"
+    rootPasswordSecretKey: "AWS_SECRET_ACCESS_KEY"
+  persistence:
+    storageClass: longhorn
+    size: 10Gi
+  volumePermissions:
+    enabled: true
+  mode: distributed
+  statefulset:
+    replicaCount: 4
+
+redis:
+  fullnameOverride: "redis"
+  auth:
+    enabled: false
+  architecture: replication
+  master:
+    persistence:
+      storageClass: "longhorn"
+      size: 500Mi
+  replica:
+    persistence:
+      storageClass: "longhorn"
+      size: 500Mi
+    replicaCount: 2

@@ -1,0 +1,145 @@
+{{- if .Values.flower.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: flower
+  {{- with .Values.common.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.flower.replicaCount | default 1 }}
+  serviceName: flower
+  selector:
+    matchLabels:
+      app: flower
+  template:
+    metadata:
+      labels:
+        app: flower
+    spec:
+      containers:
+      - name: flower
+        image: {{ .Values.common.image.repo }}:{{ .Values.common.image.tag }}
+        imagePullPolicy: {{ .Values.common.image.imagePullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        - bash entrypoints/run_celery_beat.sh
+        env:
+          {{- include "common.env" . | nindent 10 }}
+          {{- include "flower.env" . | nindent 10 }}
+          {{- include "db.env" . | nindent 10 }}
+          {{- include "rabbitmq.env" . | nindent 10 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flower
+spec:
+  selector:
+    app: flower
+  ports:
+  - port: {{ .Values.flower.port }}
+    protocol: TCP
+    targetPort: {{ .Values.flower.port }}
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: flower-reverse-proxy
+spec:
+  selector:
+    matchLabels:
+      app: flower-reverse-proxy
+  strategy:
+    type: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: flower-reverse-proxy
+    spec:
+      containers:
+      - image: nginx:1.25
+        name: flower-reverse-proxy
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: flower-reverse-proxy-nginx-config
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flower-reverse-proxy-nginx-config
+data:
+  default.conf: |
+    server {
+      listen       80;
+      listen  [::]:80;
+      server_name  localhost;
+      location /{{ .Values.flower.ingress.basePath }}/ {
+        proxy_set_header        Host $host;
+        proxy_set_header        X-Real-IP $remote_addr;
+        proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto $scheme;
+        proxy_pass              http://flower:{{ .Values.flower.port }}/{{ .Values.flower.ingress.basePath }}/;
+        proxy_read_timeout      600s;
+        proxy_send_timeout      600s;
+      }
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flower-reverse-proxy
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: flower-reverse-proxy
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: custom-request-headers-{{ .Release.Name }}-flower
+spec:
+  headers:
+    customRequestHeaders:
+      X-Auth-Request-Redirect: https://{{ .Values.flower.ingress.hostname }}/{{ .Values.flower.ingress.basePath }}
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}-flower
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.flower.ingress.hostname }}`) && PathPrefix(`/{{ .Values.flower.ingress.basePath }}`)
+      middlewares:
+        - name: custom-request-headers-{{ .Release.Name }}-flower
+        ## The traefik-forward middleware name assumes a pattern where the release name
+        ## oauth2-proxy-APP_NAME is declared for the instance of oauth2-proxy-traefik
+        ## supporting the application with release name APP_NAME:
+        - name: oauth2-proxy-{{ .Release.Name }}-traefik-forward
+      services:
+        - name: flower-reverse-proxy
+          port: 80
+  tls:
+    secretName: {{ .Values.flower.ingress.hostname | replace "." "-" | printf "%s-tls" | quote }}
+{{- end }}

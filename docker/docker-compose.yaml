@@ -11,7 +11,7 @@ volumes:
 
 services:
   api-server:
-    image: cutout-api-server:dev
+    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
     platform: linux/x86_64
     build:
       context: ../app
@@ -64,7 +64,7 @@ services:
       - ../app:/opt/app
 
   celery-worker:
-    image: cutout-celery-worker:dev
+    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
     platform: linux/x86_64
     build:
       context: ../app
@@ -88,12 +88,17 @@ services:
       # Dev environment settings
       DJANGO_DEBUG: "${DJANGO_DEBUG:-true}"
       DEV_MODE: "${DEV_MODE:-true}" # Enable Django dev server instead of uvicorn
+      CELERY_LOG_LEVEL: ${CELERY_LOG_LEVEL:-INFO}
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-4}
       # Service configuration
       API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
       API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
       # Django database configuration
       DATABASE_HOST: "${DATABASE_HOST:-django-db}"
       DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      DATABASE_DB: "${DATABASE_DB:-django}"
+      DATABASE_USER: "${DATABASE_USER:-django}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD:-password}"
       # Message broker configuration
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
@@ -104,8 +109,43 @@ services:
       - ../data/db/duckdb:/data/db
       - ../app:/opt/app
 
+  celery-beat:
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
+    build:
+      context: ../app
+      dockerfile: ../docker/Dockerfile
+      args:
+        UID: "${USERID:-1000}"
+    command: bash entrypoints/run_celery_beat.sh
+    environment:
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-true}"
+      DEV_MODE: "${DEV_MODE:-true}" # Enable Django dev server instead of uvicorn
+      CELERY_LOG_LEVEL: ${CELERY_LOG_LEVEL:-INFO}
+      # Service configuration
+      API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
+      API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
+      # Django database configuration
+      DATABASE_HOST: "${DATABASE_HOST:-django-db}"
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      DATABASE_DB: "${DATABASE_DB:-django}"
+      DATABASE_USER: "${DATABASE_USER:-django}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD:-password}"
+      # Message broker configuration
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
+      MESSAGE_BROKER_HOST: "${MESSAGE_BROKER_HOST:-rabbitmq}"
+      MESSAGE_BROKER_PORT: "${MESSAGE_BROKER_PORT:-5672}"
+    networks:
+      - internal
+    volumes:
+      - ../app:/opt/app
+
   flower:
-    image: cutout-celery-worker:dev
+    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
     platform: linux/x86_64
     build:
       context: ../app
@@ -118,14 +158,11 @@ services:
         aliases:
           - ${FLOWER_HOST:-flower}
     ports:
-      - 127.0.0.1:8888:${FLOWER_PORT:-8888}
+      - 127.0.0.1:${FLOWER_PORT:-8888}:${FLOWER_PORT:-8888}
     environment:
       # Service configuration
       API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
       API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
-      # Django database configuration
-      DATABASE_HOST: "${DATABASE_HOST:-django-db}"
-      DATABASE_PORT: "${DATABASE_PORT:-5432}"
       # Message broker configuration
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-rabbitmq}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
@@ -135,7 +172,7 @@ services:
       FLOWER_LOG_LEVEL: "${FLOWER_LOG_LEVEL:-INFO}"
       FLOWER_URL_PREFIX: "${FLOWER_URL_PREFIX:-flower}"
       FLOWER_HOST: "${FLOWER_HOST:-flower}"
-      FLOWER_PORT: "${FLOWER_PORT:-5555}"
+      FLOWER_PORT: "${FLOWER_PORT:-8888}"
 
   django-db:
     image: postgres:17
@@ -166,7 +203,7 @@ services:
       API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
       FLOWER_URL_PREFIX: "${FLOWER_URL_PREFIX:-flower}"
       FLOWER_HOST: "${FLOWER_HOST:-flower}"
-      FLOWER_PORT: "${FLOWER_PORT:-5555}"
+      FLOWER_PORT: "${FLOWER_PORT:-8888}"
     volumes:
       - django-static:/static
       - ./nginx.conf.tpl:/etc/nginx/nginx.conf.tpl:ro

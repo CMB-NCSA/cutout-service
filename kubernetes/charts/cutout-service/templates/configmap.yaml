@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-server-nginx-config
+data:
+  default.conf: |
+    # Global NGINX performance tuning
+    tcp_nopush on;
+    tcp_nodelay on;
+
+    server {
+        listen {{ .Values.cutout_server.service.proxy_port }};
+        server_name _;
+        root /usr/share/nginx/html;
+
+        # Kubernetes health check (fixed response)
+        location = /healthz {
+          access_log off;
+          return 200 "Healthy!\n";
+        }
+
+        # static files
+        {{- if .Values.cutout_server.ingress.basePath }}
+        location /{{ .Values.cutout_server.ingress.basePath }}/static {
+        {{- else }}
+        location /static {
+        {{- end }}
+            alias /static;
+        }
+
+        # django application
+        {{- if .Values.cutout_server.ingress.basePath }}
+        location /{{ .Values.cutout_server.ingress.basePath }} {
+        {{- else }}
+        location / {
+        {{- end }}
+            proxy_pass http://localhost:{{ .Values.cutout_server.service.port }}/{{ .Values.cutout_server.ingress.basePath }};
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            # Clients can send any content up to 1024 MiB in size. NGINX will
+            # not buffer any content, but instead pass it straight through to
+            # the Gunicorn Python backend to handle.
+            proxy_request_buffering off;
+            client_max_body_size 1024m;
+        }
+    }

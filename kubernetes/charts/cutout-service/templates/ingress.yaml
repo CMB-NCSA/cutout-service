@@ -1,0 +1,30 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Values.cutout_server.service.host | quote }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    {{- $hostnames := regexSplit "," .Values.cutout_server.ingress.hostnames -1 -}}
+    {{- range $hostnames }}
+    - kind: Rule
+      match: Host(`{{ . }}`) && PathPrefix(`/{{ $.Values.cutout_server.ingress.basePath }}`)
+      middlewares:
+        - name: limit
+      services:
+        - name: {{ $.Values.cutout_server.service.host | quote }}
+          port: {{ $.Values.cutout_server.service.proxy_port }}
+    {{- end }}
+  tls:
+    secretName: {{ index $hostnames 0 | replace "." "-" | printf "%s-tls" | quote }}
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: limit
+spec:
+  buffering:
+    maxRequestBodyBytes: 2000000000

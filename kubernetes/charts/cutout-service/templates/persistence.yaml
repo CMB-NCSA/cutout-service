@@ -1,0 +1,26 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: django-static
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.cutout_server.persistence.django_static.size }}
+  storageClassName: "longhorn"
+{{- if ne .Values.cutout_server.persistence.job_scratch.storageClass "emptyDir" }}
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: job-scratch
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.cutout_server.persistence.job_scratch.size }}
+  storageClassName: {{ .Values.cutout_server.persistence.job_scratch.storageClass | default "longhorn" }}
+{{- end }}

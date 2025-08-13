@@ -1,0 +1,155 @@
+{{- define "common.env" -}}
+- name: DEV_MODE
+  value: "false"
+- name: MAKE_MIGRATIONS
+  value: "false"
+- name: MAKE_MIGRATIONS
+  value: "false"
+- name: DATA_INIT
+  value: {{ .Values.cutout_server.data_init | quote }}
+- name: APP_ROOT_DIR
+  value: {{ .Values.cutout_server.app_root_dir }}
+- name: API_SERVER_HOST
+  value: {{ .Values.cutout_server.service.host }}
+- name: API_SERVER_PORT
+  value: {{ .Values.cutout_server.service.port | quote }}
+- name: DJANGO_HOSTNAMES
+  value: {{ .Values.cutout_server.ingress.hostnames }}
+- name: JOB_SCRATCH_FREE_SPACE
+  value: {{ .Values.cutout_server.persistence.job_scratch.min_free_space | quote }}
+- name: JOB_SCRATCH_MAX_SIZE
+  value: {{ .Values.cutout_server.persistence.job_scratch.max_used_space | quote }}
+{{- end }}
+
+{{- define "django.env" -}}
+- name: LOG_LEVEL
+  value: {{ .Values.cutout_server.log_level | quote }}
+- name: DJANGO_DEBUG
+  value: {{ .Values.cutout_server.django_debug | quote }}
+- name: SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      key: SECRET_KEY
+      name: django
+- name: DJANGO_SUPERUSER_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      key: DJANGO_SUPERUSER_PASSWORD
+      name: django
+- name: DJANGO_SUPERUSER_USERNAME
+  value: admin
+- name: DJANGO_SUPERUSER_EMAIL
+  value: admin@localhost
+- name: API_PROXY_PORT
+  value: {{ .Values.cutout_server.service.proxy_port | quote }}
+- name: API_RATE_LIMIT_ANON
+  value: "{{ .Values.cutout_server.api_rate_limit.anon }}"
+- name: API_RATE_LIMIT_USER
+  value: "{{ .Values.cutout_server.api_rate_limit.user }}"
+- name: API_RATE_LIMIT_DOWNLOAD
+  value: "{{ .Values.cutout_server.api_rate_limit.download }}"
+- name: REDIS_SERVICE
+  value: "{{ .Values.redis.fullnameOverride }}-master"
+{{- end }}
+
+{{- define "celery.env" -}}
+- name: TASK_TIME_LIMIT
+  value: {{ .Values.celery.task_time_limit | quote }}
+- name: TASK_SOFT_TIME_LIMIT
+  value: {{ .Values.celery.task_soft_time_limit | quote }}
+{{- end }}
+
+
+{{- define "s3.env" -}}
+- name: S3_BUCKET
+  value: {{ .Values.object_store.s3_bucket }}
+- name: S3_BASE_DIR
+  value: {{ .Values.object_store.s3_base_dir }}
+- name: S3_REGION_NAME
+  value: {{ .Values.object_store.s3_region }}
+- name: S3_ENDPOINT_URL
+  value: {{ .Values.object_store.service_url }}
+- name: AWS_S3_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      key: AWS_ACCESS_KEY_ID
+      name: s3-credentials
+- name: AWS_S3_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      key: AWS_SECRET_ACCESS_KEY
+      name: s3-credentials
+{{- end }}
+
+{{- define "oidc.env" -}}
+- name: OIDC_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      key: OIDC_CLIENT_ID
+      name: oidc
+- name: OIDC_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      key: OIDC_CLIENT_SECRET
+      name: oidc
+- name: OIDC_OP_AUTHORIZATION_ENDPOINT
+  value: {{ .Values.cutout_server.auth.oidc_op_authorization_endpoint | quote }}
+- name: OIDC_OP_LOGOUT_ENDPOINT
+  value: {{ .Values.cutout_server.auth.oidc_op_logout_endpoint | quote }}
+- name: OIDC_OP_TOKEN_ENDPOINT
+  value: {{ .Values.cutout_server.auth.oidc_op_token_endpoint | quote }}
+- name: OIDC_OP_USER_ENDPOINT
+  value: {{ .Values.cutout_server.auth.oidc_op_user_endpoint | quote }}
+- name: OIDC_OP_JWKS_ENDPOINT
+  value: {{ .Values.cutout_server.auth.oidc_op_jwks_endpoint | quote }}
+{{- end }}
+
+{{- define "db.env" -}}
+- name: DATABASE_HOST
+  value: {{ .Values.database.clusterName }}-rw
+- name: DATABASE_PORT
+  value: {{ .Values.database.port | quote }}
+- name: DATABASE_USER
+  value: {{ .Values.database.initdb.username | quote }}
+- name: DATABASE_DB
+  value: {{ .Values.database.initdb.database | quote }}
+- name: DATABASE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      key: password
+      name: {{ .Values.database.initdb.existingSecret | quote }}
+- name: POSTGRES_USER
+  value: {{ .Values.database.initdb.username | quote }}
+- name: POSTGRES_DB
+  value: {{ .Values.database.initdb.database | quote }}
+- name: POSTGRES_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      key: password
+      name: {{ .Values.database.initdb.existingSecret | quote }}
+{{- end }}
+
+{{- define "rabbitmq.env" -}}
+- name: MESSAGE_BROKER_HOST
+  value: {{ .Values.rabbitmq.fullnameOverride }}
+- name: MESSAGE_BROKER_PORT
+  value: {{ .Values.rabbitmq.service.ports.amqp | quote }}
+- name: MESSAGE_BROKER_MANAGEMENT_PORT
+  value: {{ .Values.rabbitmq.service.ports.manager | quote }}
+- name: RABBITMQ_DEFAULT_USER
+  value: {{ .Values.rabbitmq.auth.username }}
+- name: RABBITMQ_DEFAULT_PASS
+  valueFrom:
+    secretKeyRef:
+      key: rabbitmq-password
+      name: {{ .Values.rabbitmq.auth.existingPasswordSecret }}
+{{- end }}
+
+{{- define "flower.env" -}}
+- name: FLOWER_URL_PREFIX
+  value: {{ .Values.flower.ingress.basePath | quote }}
+- name: FLOWER_PORT
+  value: {{ .Values.flower.port | quote }}
+- name: FLOWER_UNAUTHENTICATED_API
+  value: {{ .Values.flower.flower_unauthenticated_api | quote }}
+{{- end }}

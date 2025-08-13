@@ -1,0 +1,296 @@
+{{- if .Values.cutout_server.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.cutout_server.service.host | quote }}
+  {{- with .Values.common.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.cutout_server.replicaCount }}
+  serviceName: {{ .Values.cutout_server.service.host | quote }}
+  selector:
+    matchLabels:
+      app: {{ .Values.cutout_server.service.host | quote }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.cutout_server.service.host | quote }}
+        app.kubernetes.io/component: api-server
+    spec:
+      containers:
+      - name: api-server
+        image: {{ .Values.common.image.repo }}:{{ .Values.common.image.tag }}
+        imagePullPolicy: {{ .Values.common.image.imagePullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        - bash entrypoints/run_api_server.sh
+        env:
+          {{- include "common.env" . | nindent 10 }}
+          {{- include "django.env" . | nindent 10 }}
+          {{- include "db.env" . | nindent 10 }}
+          {{- include "rabbitmq.env" . | nindent 10 }}
+          {{- include "s3.env" . | nindent 10 }}
+          {{- include "oidc.env" . | nindent 10 }}
+          {{- include "celery.env" . | nindent 10 }}
+        startupProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.cutout_server.service.port }}
+            scheme: HTTP
+            httpHeaders:
+              - name: Host
+                value: {{ .Values.cutout_server.service.host }}
+          successThreshold: 1
+          periodSeconds: 10
+          failureThreshold: 60
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.cutout_server.service.port }}
+            scheme: HTTP
+            httpHeaders:
+              - name: Host
+                value: {{ .Values.cutout_server.service.host }}
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 6
+          terminationGracePeriodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.cutout_server.service.port }}
+            scheme: HTTP
+            httpHeaders:
+              - name: Host
+                value: {{ .Values.cutout_server.service.host }}
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 1
+        {{- with  .Values.cutout_server.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+          - name: static-files
+            mountPath: /opt/static
+            subPath: static
+      - name: nginx
+        image: "{{ .Values.cutout_server.proxy.image.repository }}:{{ .Values.cutout_server.proxy.image.tag }}"
+        imagePullPolicy: {{ .Values.cutout_server.proxy.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: {{ .Values.cutout_server.service.proxy_port }}
+            protocol: TCP
+        livenessProbe:
+          initialDelaySeconds: 15
+          timeoutSeconds: 3
+          httpGet:
+            path: /healthz
+            port: http
+        readinessProbe:
+          initialDelaySeconds: 15
+          timeoutSeconds: 3
+          httpGet:
+            path: /healthz
+            port: http
+        securityContext:
+          {{- toYaml .Values.cutout_server.proxy.securityContext | nindent 10 }}
+        resources:
+          {{- toYaml .Values.cutout_server.proxy.resources | nindent 10 }}
+        volumeMounts:
+          - name: nginx-confd
+            mountPath: /etc/nginx/conf.d
+            readOnly: true
+          - name: static-files
+            mountPath: /static
+            subPath: static
+            readOnly: true
+          - name: nginx-var-cache-nginx
+            mountPath: /var/cache/nginx
+            readOnly: false
+          - name: nginx-var-run
+            mountPath: /var/run
+            readOnly: false
+      volumes:
+        - name: static-files
+          persistentVolumeClaim:
+            claimName: django-static
+        - name: nginx-confd
+          configMap:
+            name: api-server-nginx-config
+        - name: nginx-var-cache-nginx
+          emptyDir:
+        - name: nginx-var-run
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - api-server
+              topologyKey: "kubernetes.io/hostname"
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: celery-worker
+  {{- with .Values.common.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.celery.workers.replicaCount }}
+  serviceName: celery-worker
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+        app.kubernetes.io/component: celery-worker
+        app.kubernetes.io/name: celery-worker
+    spec:
+      initContainers:
+      - name: volume-permissions
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - chown {{ .Values.common.uid }}:{{ .Values.common.uid }} /scratch
+        volumeMounts:
+          - name: job-scratch
+            mountPath: /scratch
+            subPath: scratch
+      containers:
+      - name: worker
+        image: {{ .Values.common.image.repo }}:{{ .Values.common.image.tag }}
+        imagePullPolicy: {{ .Values.common.image.imagePullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        - bash entrypoints/run_celery_worker.sh jobs
+        env:
+          - name: CELERY_CONCURRENCY
+            value: {{ .Values.celery.workers.concurrency | quote }}
+          - name: CELERY_LOG_LEVEL
+            value: {{ .Values.celery.log_level | quote }}
+          {{- include "common.env" . | nindent 10 }}
+          {{- include "s3.env" . | nindent 10 }}
+          {{- include "db.env" . | nindent 10 }}
+          {{- include "rabbitmq.env" . | nindent 10 }}
+          {{- include "celery.env" . | nindent 10 }}
+        volumeMounts:
+          - name: job-scratch
+            mountPath: /scratch
+            subPath: scratch
+        {{- with  .Values.celery.workers.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        # References for probes:
+        #   - https://github.com/celery/celery/issues/4079
+        #   - https://medium.com/ambient-innovation/health-checks-for-celery-in-kubernetes-cf3274a3e106
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - test $(($(date +%s) - $(stat -c %Y /tmp/worker_heartbeat))) -lt 10
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - test -e /tmp/worker_ready
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+        - name: job-scratch
+          {{- with .Values.cutout_server.persistence.job_scratch }}
+          {{- if ne .storageClass "emptyDir" }}
+          persistentVolumeClaim:
+            claimName: job-scratch
+          {{- else }}
+          emptyDir:
+            sizeLimit: {{ .size }}
+          {{- end }}
+          {{- end }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+                - key: celery-workhorse
+                  operator: In
+                  values:
+                  - "true"
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - celery-worker
+              topologyKey: "kubernetes.io/hostname"
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - celery-worker
+            topologyKey: "kubernetes.io/hostname"
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: celery-beat
+  {{- with .Values.common.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.celery.beat.replicaCount }}
+  serviceName: celery-beat
+  selector:
+    matchLabels:
+      app: celery-beat
+  template:
+    metadata:
+      labels:
+        app: celery-beat
+    spec:
+      containers:
+      - name: beat
+        image: {{ .Values.common.image.repo }}:{{ .Values.common.image.tag }}
+        imagePullPolicy: {{ .Values.common.image.imagePullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        - bash entrypoints/run_celery_beat.sh
+        env:
+          {{- include "common.env" . | nindent 10 }}
+          {{- include "s3.env" . | nindent 10 }}
+          {{- include "db.env" . | nindent 10 }}
+          {{- include "rabbitmq.env" . | nindent 10 }}
+{{- end }}
