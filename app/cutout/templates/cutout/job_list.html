@@ -1,0 +1,59 @@
+{% extends 'cutout/base.html' %}
+{% block content %}
+  <h1>Jobs</h1>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Time Created (UTC)</th>
+          <th>UUID</th>
+          <th>Status</th>
+          <th>Error</th>
+          {% if user.is_superuser %}
+          <th>Owner</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if job_list %}
+        {% for this_job in job_list %}
+        <tr>
+          <td><a href="../jobs/{{ this_job.uuid }}">{% if this_job.name %}{{ this_job.name }}{% else %}{{ this_job.uuid | truncatechars:9 }}{% endif %}</a></td>
+          <td>{{ this_job.created|date:'Y/m/d H:i:s' }}</td>
+          <td class="uuid-table"><code>{{ this_job.uuid }}</code></td>
+          <td>{{ this_job.status }}</td>
+          {% if this_job.error_info %}
+          <td>
+            <div class="error-msg"><code>{{ this_job.error_info }}</code></div>
+          </td>
+          {% else %}
+          <td></td>
+          {% endif %}
+          {% if user.is_superuser %}
+          <td>{{ this_job.owner }}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        {% endif %}
+    </tbody>
+  </table>
+  <div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; First</a>&nbsp;&nbsp;
+            <a href="?page={{ page_obj.previous_page_number }}">Previous</a>&nbsp;&nbsp;
+        {% endif %}
+
+        <span class="current">
+            Page <b>{{ page_obj.number }}</b> of <b>{{ page_obj.paginator.num_pages }}</b>
+        </span>
+
+        {% if page_obj.has_next %}
+            &nbsp;&nbsp;<a href="?page={{ page_obj.next_page_number }}">Next</a>
+            &nbsp;&nbsp;<a href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        {% endif %}
+    </span>
+</div>
+
+
+{% endblock %}

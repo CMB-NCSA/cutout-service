@@ -51,6 +51,10 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     # add custom headers here
 ]
 
+# Celery settings are loaded from CELERY_ prefix variabled in "app/cutout/celery.py"
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv('CELERY_TASK_SOFT_TIME_LIMIT', "3600"))
+CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT', "3800"))
+
 # Application definition
 
 SITE_ID = 1
@@ -180,7 +184,7 @@ DATE_FORMAT = 'Y-m-d'
 
 STATIC_URL = '/static/'
 # STATIC_ROOT tells collectstatic where to copy all the static files that it collects.
-STATIC_ROOT = os.path.join(APP_ROOT_DIR, 'static')
+STATIC_ROOT = os.path.join(APP_ROOT_DIR, 'app', 'static')
 
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(APP_ROOT_DIR, 'uploads')
@@ -197,8 +201,8 @@ CACHES = {
 }
 
 API_RATE_LIMIT_ANON = int(os.getenv('API_RATE_LIMIT_ANON', '30'))
-API_RATE_LIMIT_USER = int(os.getenv('API_RATE_LIMIT_USER', '2'))
-API_RATE_LIMIT_DOWNLOAD = int(os.getenv('API_RATE_LIMIT_DOWNLOAD', '10'))
+API_RATE_LIMIT_USER = int(os.getenv('API_RATE_LIMIT_USER', '30'))
+API_RATE_LIMIT_DOWNLOAD = int(os.getenv('API_RATE_LIMIT_DOWNLOAD', '30'))
 
 REST_FRAMEWORK = {
     'DEFAULT_METADATA_CLASS': 'rest_framework.metadata.SimpleMetadata',
@@ -217,7 +221,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': f'''{API_RATE_LIMIT_ANON}/minute''',
+        'anon': f'''{API_RATE_LIMIT_ANON}/second''',
         'user': f'''{API_RATE_LIMIT_USER}/second''',
         'download': f'''{API_RATE_LIMIT_DOWNLOAD}/second''',
     }

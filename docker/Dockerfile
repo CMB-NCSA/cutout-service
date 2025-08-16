@@ -29,9 +29,12 @@ RUN git clone https://github.com/CMB-NCSA/stiff.git  && \
     make install
 
 # Install des_cutter
-ARG DES_CUTTER_VERSION=1.0.0
-RUN git clone https://github.com/CMB-NCSA/des_cutter -b $DES_CUTTER_VERSION /tmp/des_cutter
-RUN cd /tmp/des_cutter && \
+# ARG DES_CUTTER_VERSION=1.0.0
+# RUN git clone https://github.com/CMB-NCSA/des_cutter -b $DES_CUTTER_VERSION /tmp/des_cutter
+ARG DES_CUTTER_COMMIT=590cead71f4bd21c50590af1c3979f7acc266c91
+RUN git clone https://github.com/CMB-NCSA/des_cutter /tmp/des_cutter && \
+    cd /tmp/des_cutter && \
+    git checkout $DES_CUTTER_COMMIT && \
     pip install . --no-deps --break-system-packages
 
 FROM python:3.13.5

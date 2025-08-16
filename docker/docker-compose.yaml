@@ -8,8 +8,23 @@ volumes:
   django-db: {}
   django-static: {}
   object-data: {}
+  scratch: {}
 
 services:
+  setup-permissions:
+    image: ubuntu:24.04
+    restart: on-failure
+    command:
+      - bash
+      - -c
+      - |-
+        set -euo pipefail
+        chown -R ${USERID:-1000}:${USERID:-1000} \
+          /static \
+          /scratch
+    volumes:
+      - "django-static:${APP_ROOT_DIR:-/opt}/app/static"
+      - scratch:/scratch
   api-server:
     image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
     platform: linux/x86_64
@@ -57,6 +72,18 @@ services:
       # Application configuration
       APP_ROOT_DIR: "${APP_ROOT_DIR:-/opt}"
       DES_CUTTER_DIR: "${DES_CUTTER_DIR:-/}"
+      DES_ARCHIVE_ROOT: "${DES_ARCHIVE_ROOT:-/des_archive}"
+      # S3 configuration
+      AWS_S3_ACCESS_KEY_ID: "${AWS_S3_ACCESS_KEY_ID:-minioadmin}"
+      AWS_S3_SECRET_ACCESS_KEY: "${AWS_S3_SECRET_ACCESS_KEY:-minioadmin}"
+      MINIO_ROOT_USER: "${AWS_S3_ACCESS_KEY_ID:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${AWS_S3_SECRET_ACCESS_KEY:-minioadmin}"
+      S3_SERVER_PORT: "${S3_SERVER_PORT:-9000}"
+      S3_CONSOLE_PORT: "${S3_CONSOLE_PORT:-9001}"
+      S3_ENDPOINT_URL: "${S3_ENDPOINT_URL:-http://object-store:9000}"
+      S3_REGION_NAME: "${S3_REGION_NAME:-osn}"
+      S3_BUCKET: "${S3_BUCKET:-descut}"
+      S3_BASE_DIR: "${S3_BASE_DIR:-descut}"
     volumes:
       - "django-static:${APP_ROOT_DIR:-/opt}/app/static"
       - ../data/files/des_archive:/des_archive
@@ -104,10 +131,26 @@ services:
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-rabbitmq}"
       MESSAGE_BROKER_HOST: "${MESSAGE_BROKER_HOST:-rabbitmq}"
       MESSAGE_BROKER_PORT: "${MESSAGE_BROKER_PORT:-5672}"
+      # Application configuration
+      APP_ROOT_DIR: "${APP_ROOT_DIR:-/opt}"
+      DES_CUTTER_DIR: "${DES_CUTTER_DIR:-/}"
+      DES_ARCHIVE_ROOT: "${DES_ARCHIVE_ROOT:-/des_archive}"
+      # S3 configuration
+      AWS_S3_ACCESS_KEY_ID: "${AWS_S3_ACCESS_KEY_ID:-minioadmin}"
+      AWS_S3_SECRET_ACCESS_KEY: "${AWS_S3_SECRET_ACCESS_KEY:-minioadmin}"
+      MINIO_ROOT_USER: "${AWS_S3_ACCESS_KEY_ID:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${AWS_S3_SECRET_ACCESS_KEY:-minioadmin}"
+      S3_SERVER_PORT: "${S3_SERVER_PORT:-9000}"
+      S3_CONSOLE_PORT: "${S3_CONSOLE_PORT:-9001}"
+      S3_ENDPOINT_URL: "${S3_ENDPOINT_URL:-http://object-store:9000}"
+      S3_REGION_NAME: "${S3_REGION_NAME:-osn}"
+      S3_BUCKET: "${S3_BUCKET:-descut}"
+      S3_BASE_DIR: "${S3_BASE_DIR:-descut}"
     volumes:
       - ../data/files/des_archive:/des_archive
       - ../data/db/duckdb:/data/db
       - ../app:/opt/app
+      - scratch:/scratch
 
   celery-beat:
     restart: on-failure
@@ -173,6 +216,12 @@ services:
       FLOWER_URL_PREFIX: "${FLOWER_URL_PREFIX:-flower}"
       FLOWER_HOST: "${FLOWER_HOST:-flower}"
       FLOWER_PORT: "${FLOWER_PORT:-8888}"
+      # Django database configuration
+      DATABASE_HOST: "${DATABASE_HOST:-django-db}"
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      DATABASE_DB: "${DATABASE_DB:-django}"
+      DATABASE_USER: "${DATABASE_USER:-django}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD:-password}"
 
   django-db:
     image: postgres:17
@@ -240,18 +289,24 @@ services:
     networks:
       - internal
 
-  # object-store:
-  #   image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
-  #   platform: linux/x86_64
-  #   ports:
-  #     - 127.0.0.1:${S3_CONSOLE_PORT:-9001}:${S3_CONSOLE_PORT:-9001}
-  #     - 127.0.0.1:${S3_SERVER_PORT:-9000}:${S3_SERVER_PORT:-9000}
-  #   networks:
-  #     - internal
-  #   command:
-  #   - server
-  #   - /data
-  #   - --console-address
-  #   - ":${S3_CONSOLE_PORT:-9001}"
-  #   volumes:
-  #     - object-data:/data
+  object-store:
+    image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
+    platform: linux/x86_64
+    ports:
+      - 127.0.0.1:${S3_CONSOLE_PORT:-9001}:${S3_CONSOLE_PORT:-9001}
+      - 127.0.0.1:${S3_SERVER_PORT:-9000}:${S3_SERVER_PORT:-9000}
+    networks:
+      - internal
+    command:
+    - server
+    - /data
+    - --console-address
+    - ":${S3_CONSOLE_PORT:-9001}"
+    environment:
+      # S3 configuration
+      MINIO_ROOT_USER: "${AWS_S3_ACCESS_KEY_ID:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${AWS_S3_SECRET_ACCESS_KEY:-minioadmin}"
+      S3_SERVER_PORT: "${S3_SERVER_PORT:-9000}"
+      S3_CONSOLE_PORT: "${S3_CONSOLE_PORT:-9001}"
+    volumes:
+      - object-data:/data

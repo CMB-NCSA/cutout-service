@@ -37,7 +37,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # If the worker is running in Kubernetes, enable the liveness probe
 if os.getenv('KUBERNETES_SERVICE_HOST', ''):
-    from cutout.k8s import LivenessProbe
+    from .k8s import LivenessProbe
     app.steps["worker"].add(LivenessProbe)
 
 

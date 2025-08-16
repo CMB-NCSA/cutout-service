@@ -12,9 +12,11 @@ django-silk
 django-storages[s3]
 django-tables2
 djangorestframework
+dotmap
 flower
 uvicorn
 minio
 mozilla-django-oidc
 psycopg2-binary
+redis
 watchdog
