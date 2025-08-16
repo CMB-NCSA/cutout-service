@@ -19,8 +19,21 @@ Launch the local deployment by navigating to the root directory of your repo clo
 docker compose -f docker/docker-compose.yaml up -d --build
 ```
 
-
 ## Testing
+
+## Virtual environment
+
+You may want to use a Python virtual environment when developing code or when testing. In general it is possible to `docker exec` into a running container where the environment is already configured, but sometimes it is convenient to run a script on your host machine, such as `job_cannon.py` as described below. In these cases, you can create a virtual environment and install the requirements locally.
+
+```bash
+# Create the venv once
+$ python -m venv .venv
+# Thereafter, source the activate script prior to running Python scripts that require the project dependencies
+$ source .venv/bin/activate
+(.venv) 
+# Install/update all dependencies 
+$ pip install -r app/requirements.base.txt 
+```
 
 ## Unit tests
 
