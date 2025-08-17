@@ -1,9 +1,10 @@
 import yaml
 import os
 from django.http import StreamingHttpResponse
+from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render
 from django.conf import settings
-from django.views.generic import ListView, DetailView
+from django.views.generic import DetailView
 from rest_framework.permissions import BasePermission
 from rest_framework import viewsets, status
 from .models import Job, JobFile
@@ -17,6 +18,11 @@ from .log import get_logger
 logger = get_logger(__name__)
 
 s3 = ObjectStore()
+
+
+# Handler for 403 errors
+def error_view(request, exception, template_name="cutout/access_denied.html"):
+    return render(request, template_name)
 
 
 def HomePageView(request):
@@ -37,13 +43,19 @@ class IsAdmin(BasePermission):
         return request.user.is_superuser
 
 
+class RunJob(BasePermission):
+    def has_permission(self, request, view):
+        logger.debug(f'''user.has_perms: {request.user.has_perms(('cutout.run_job',))}''')
+        return request.user.has_perms(('cutout.run_job',))
+
+
 class JobViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows jobs to be viewed or edited.
     """
     model = Job
     serializer_class = JobSerializer
-    # permission_classes = [IsStaff | IsAdmin]
+    permission_classes = [IsAdmin, IsStaff, RunJob]
 
     def get_queryset(self):
         queryset = Job.objects.all()
@@ -86,14 +98,13 @@ class JobViewSet(viewsets.ModelViewSet):
         return response
 
 
-class JobListView(ListView):
-
-    model = Job
-    template_name = 'cutout/job_list.html'
-    paginate_by = 20
-
-    def get_queryset(self):
-        return super().get_queryset()
+@permission_required("cutout.run_job", raise_exception=True)
+def job_list(request):
+    jobs = Job.objects.filter(owner__exact=request.user)
+    context = {
+        "job_list": jobs,
+    }
+    return render(request, "cutout/job_list.html", context)
 
 
 class JobDetailView(DetailView):

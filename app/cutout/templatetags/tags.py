@@ -7,3 +7,8 @@ register = template.Library()
 @register.simple_tag(name="app_version")
 def app_version(prefix):
     return f'''{prefix}{settings.APP_VERSION}'''
+
+
+@register.simple_tag(name="support_email")
+def support_email():
+    return settings.SUPPORT_EMAIL

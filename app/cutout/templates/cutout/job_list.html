@@ -37,23 +37,6 @@
         {% endif %}
     </tbody>
   </table>
-  <div class="pagination">
-    <span class="step-links">
-        {% if page_obj.has_previous %}
-            <a href="?page=1">&laquo; First</a>&nbsp;&nbsp;
-            <a href="?page={{ page_obj.previous_page_number }}">Previous</a>&nbsp;&nbsp;
-        {% endif %}
-
-        <span class="current">
-            Page <b>{{ page_obj.number }}</b> of <b>{{ page_obj.paginator.num_pages }}</b>
-        </span>
-
-        {% if page_obj.has_next %}
-            &nbsp;&nbsp;<a href="?page={{ page_obj.next_page_number }}">Next</a>
-            &nbsp;&nbsp;<a href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
-        {% endif %}
-    </span>
-</div>
 
 
 {% endblock %}

@@ -15,6 +15,9 @@ class Job(models.Model):
         # db_table = 'ce_jobs'
         verbose_name = _('job')
         verbose_name_plural = _('jobs')
+        permissions = [
+            ("run_job", "Can run cutout jobs"),
+        ]
 
     class JobStatus(models.TextChoices):
         # Use the built-in Celery states

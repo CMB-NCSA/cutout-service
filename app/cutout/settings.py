@@ -20,6 +20,9 @@ S3_BASE_DIR = os.environ.get('S3_BASE_DIR', '').strip('/')
 JOB_SCRATCH_MAX_SIZE = int(float(os.getenv('JOB_SCRATCH_MAX_SIZE', str(0 * 1024**3))))  # 0 GiB
 JOB_SCRATCH_FREE_SPACE = int(float(os.getenv('JOB_SCRATCH_FREE_SPACE', str(5 * 1024**3))))  # 5 GiB
 
+# Email for support requests
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', "devnull@example.com")
+
 # API_SERVER_HOST is the internal service name
 API_SERVER_HOST = os.environ.get("API_SERVER_HOST", "api-server")
 # API_SERVER_PORT is the port associated with the Django webserver itself
@@ -74,6 +77,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'django_celery_beat',
     'storages',
+    'mozilla_django_oidc',
     'cutout',
 ]
 
@@ -154,6 +158,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
+    'cutout.auth_backend.CustomOIDCAuthenticationBackend',
 )
 
 
@@ -187,7 +192,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(APP_ROOT_DIR, 'app', 'static')
 
 MEDIA_URL = '/uploads/'
-MEDIA_ROOT = os.path.join(APP_ROOT_DIR, 'uploads')
+MEDIA_ROOT = os.path.join(APP_ROOT_DIR, 'app', 'uploads')
 
 # Caching
 # https://docs.djangoproject.com/en/dev/topics/cache/#filesystem-caching
@@ -227,6 +232,37 @@ REST_FRAMEWORK = {
     }
 }
 
+# Configure the OIDC client
+OIDC_RP_CLIENT_ID = os.environ.get("OIDC_CLIENT_ID", "")
+OIDC_RP_CLIENT_SECRET = os.environ.get("OIDC_CLIENT_SECRET", "")
+OIDC_RP_SCOPES = "openid profile email"
+OIDC_OP_AUTHORIZATION_ENDPOINT = os.environ.get('OIDC_OP_AUTHORIZATION_ENDPOINT', '')
+OIDC_OP_TOKEN_ENDPOINT = os.environ.get('OIDC_OP_TOKEN_ENDPOINT', '')
+OIDC_OP_USER_ENDPOINT = os.environ.get('OIDC_OP_USER_ENDPOINT', '')
+
+# Required for keycloak
+OIDC_RP_SIGN_ALGO = os.environ.get('OIDC_RP_SIGN_ALGO', 'RS256')
+OIDC_OP_JWKS_ENDPOINT = os.environ.get('OIDC_OP_JWKS_ENDPOINT', '')
+
+OIDC_OP_LOGOUT_URL_METHOD = "app.auth_backend.execute_logout"
+# OIDC_USERNAME_ALGO = 'app_base.auth_backends.generate_username'
+
+LOGIN_URL = '/oidc/authenticate'
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = os.environ.get('OIDC_OP_LOGOUT_ENDPOINT', '/')
+
+# ALLOW_LOGOUT_GET_METHOD tells mozilla-django-oidc that the front end can logout with a GET
+# which allows the front end to use location.href to /auth/logout to logout.
+ALLOW_LOGOUT_GET_METHOD = True
+
+# Our django backend is deployed behind nginx/guncorn. By default Django ignores
+# the X-FORWARDED request headers generated. mozilla-django-oidc calls
+# Django's request.build_absolute_uri method in such a way that the https
+# request produces an http redirect_uri. So, we need to tell Django not to ignore
+# the X-FORWARDED header and the protocol to use:
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -236,10 +272,14 @@ LOGGING = {
         }
     },
     'loggers': {
-        '': {
+        # '': {
+        #     'handlers': ['console'],
+        #     'level': 'INFO'
+        # },
+        'mozilla_django_oidc': {
             'handlers': ['console'],
-            'level': 'INFO'
-        }
+            'level': 'DEBUG'
+        },
     }
 }
 logging.config.dictConfig(LOGGING)
