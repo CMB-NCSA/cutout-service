@@ -70,3 +70,28 @@ Use the `/scripts/job_cannon.py` script to stress test concurrent job processing
 ```bash
 python scripts/job_cannon.py 10
 ```
+
+## Astrophysical data
+
+If you have SSH access to a machine with the source astro data mounted, you can use `sshfs` to mount this data locally for testing.
+
+The example below shows how to mount the data to `/mnt/des_archive`. First you must add `user_allow_other` to `/etc/fuse.conf`:
+
+```bash
+$ cat /etc/fuse.conf
+...
+user_allow_other
+```
+
+Then mount with `sshfs`:
+
+```bash
+sshfs -o allow_other username@deslogin.cosmology.illinois.edu:/taiga/des_archive /mnt/des_archive
+
+Modify the Docker Compose service volume definitions to include
+
+```yaml
+volumes:
+  - /mnt/des_archive:/des_archive:ro
+  ...
+```
