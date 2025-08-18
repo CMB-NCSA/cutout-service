@@ -2,18 +2,27 @@ import yaml
 import os
 from django.http import StreamingHttpResponse
 from django.contrib.auth.decorators import permission_required
+from django.contrib.auth.mixins import UserPassesTestMixin
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from rest_framework.decorators import api_view
+from rest_framework import permissions
 from django.shortcuts import render
 from django.conf import settings
-from django.views.generic import DetailView
+from django.views.generic import DetailView, ListView
 from rest_framework.permissions import BasePermission
+from django.http import HttpResponseForbidden
 from rest_framework import viewsets, status
 from .models import Job, JobFile
 from .models import update_job_state
 from .workflows import run_workflow
-from .serializers import JobSerializer
+from .serializers import JobSerializer, UserSerializer
 from rest_framework.response import Response
 from .object_store import ObjectStore
-from .tasks import process_config
+from .tasks import process_config, validate_config
+from .tasks_api import revoke_job, delete_job, delete_job_files
+from celery import chain, group
 from .log import get_logger
 logger = get_logger(__name__)
 
@@ -23,6 +32,36 @@ s3 = ObjectStore()
 # Handler for 403 errors
 def error_view(request, exception, template_name="cutout/access_denied.html"):
     return render(request, template_name)
+
+
+class CustomAuthToken(UserPassesTestMixin, ObtainAuthToken):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def test_func(self):
+        return self.request.user.has_perms(('cutout.run_job',))
+
+    def get(self, request, format=None):
+        token, created = Token.objects.get_or_create(user=request.user)
+        return Response({'token': token.key})
+
+
+@api_view(['POST'])
+def get_token(request, format=None):
+    response = Response()
+    username = request.data['username']
+    password = request.data['password']
+    logger.debug(f'Fetching token for username "{username}"')
+    user_search = User.objects.filter(username__exact=username)
+    if not user_search:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return response
+    user = user_search[0]
+    if not user.check_password(password):
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return response
+    token, created = Token.objects.get_or_create(user=user)
+    logger.debug(f'token for username "{username}": "{token.key}')
+    return Response(data={'token': token.key})
 
 
 def HomePageView(request):
@@ -49,17 +88,42 @@ class RunJob(BasePermission):
         return request.user.has_perms(('cutout.run_job',))
 
 
+class UserListView(UserPassesTestMixin, ListView):
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def handle_no_permission(self):
+        return HttpResponseForbidden(content='You must be authenticated.')
+
+    model = User
+    template_name = 'cutout/user_list.html'
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    """
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    permission_classes = [IsAdmin]
+
+
 class JobViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows jobs to be viewed or edited.
     """
     model = Job
     serializer_class = JobSerializer
-    permission_classes = [IsAdmin, IsStaff, RunJob]
+    permission_classes = [IsAdmin | IsStaff | RunJob]
 
     def get_queryset(self):
-        queryset = Job.objects.all()
+        queryset = Job.objects.filter(owner__exact=self.request.user)
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.is_valid(raise_exception=True)
+        return serializer.save(owner=self.request.user)
 
     def create(self, request, *args, **kwargs):
         logger.debug(f'Creating job from request: {request.data}')
@@ -68,21 +132,24 @@ class JobViewSet(viewsets.ModelViewSet):
         new_job_data = response.data
         job_id = str(new_job_data['uuid'])
         job_name = new_job_data['name']
+        new_job = Job.objects.get(uuid__exact=job_id)
+        # Process the config and update the job record
+        config = process_config(job_id, new_job_data['config'])
+        err_msg = validate_config(config)
         try:
-            # Process the config and update the job record
-            config = process_config(job_id, new_job_data['config'])
-            new_job = Job.objects.get(uuid__exact=job_id)
-            new_job.config = config
-            new_job.save()
-        except Exception as err:
-            logger.error(f'''Error: {err}''')
+            assert not err_msg
+        except AssertionError:
+            logger.error(f'''Invalid config: {err_msg}''')
             response = Response(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                data=f'''{err}''',
+                status=status.HTTP_400_BAD_REQUEST,
+                data=f'''Invalid config: {err_msg}''',
             )
-            update_job_state(job_id, Job.JobStatus.FAILURE, error_info=f"Error requesting the config file: {err}")
+            new_job.delete()
             return response
+        new_job.config = config
+        new_job.save()
         # Launch workflow as async Celery tasks
+        logger.debug(f'''Job info: {response.data}''')
         logger.debug(f'''Launching Celery task for workflow "{job_name}"...''')
         try:
             # Launch workflow
@@ -95,14 +162,48 @@ class JobViewSet(viewsets.ModelViewSet):
                 data=f'''{err_msg}''',
             )
             update_job_state(job_id, Job.JobStatus.FAILURE, error_info=err_msg)
+        logger.debug(f'''[{response.status_code}] {response.data}''')
+        return response
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        job_id = pk
+        logger.debug(f'''Deleting job "{job_id}"...''')
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        # If the authenticated user does not own the job, do not delete anything
+        job = Job.objects.filter(uuid__exact=job_id)
+        if not job:
+            response.data = f'Job {job_id} not found.'
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        # Allow admin to delete any job
+        if not self.request.user.username == settings.DJANGO_SUPERUSER_USERNAME:
+            job = job.filter(owner__exact=self.request.user)
+            if not job:
+                response.data = f'You must be the job owner to delete it: {job_id}.'
+                response.status_code = status.HTTP_403_FORBIDDEN
+                return response
+        logger.info(f'''Deleting job "{job_id}"...''')
+        # Delete job record from database and delete job files
+        # after revoking workflow tasks using async Celery tasks
+        delete_chain = chain(
+            revoke_job.si(job_id),
+            group([
+                delete_job.si(job_id),
+                delete_job_files.si(job_id),
+            ]),
+        )
+        delete_chain.delay()
         return response
 
 
 @permission_required("cutout.run_job", raise_exception=True)
 def job_list(request):
     jobs = Job.objects.filter(owner__exact=request.user)
+    logger.debug(jobs)
+    token, created = Token.objects.get_or_create(user=request.user)
     context = {
-        "job_list": jobs,
+        'job_list': jobs,
+        'api_token': token.key,
     }
     return render(request, "cutout/job_list.html", context)
 

@@ -3,17 +3,39 @@
   <div class="row align-items-end">
     <div class="col-lg-6 offset-lg-3 col-xs-12 offset-xs-0">
       <span class="text-muted">
-        <a href="mailto:" target="_blank">
-          <i class="bi bi-life-preserver"></i>Ask for help and report bugs here</a>.
-          | <a href="#">{% app_version "v" %}</a>
+        <a href="mailto:{% support_email %}?subject=Blast%20support%20request&body=
+        Please%20provide%20a%20detailed%20description%20of%20your%20problem%20or%20question.%20We%20appreciate%20your%20patience%20in%20receiving%20a%20response%3B%20please%20allow%20one%20or%20two%20days%20before%20sending%20a%20follow-up%20email.
+        %0A%0A
+        &nbsp;&nbsp;&nbsp;&nbsp;Email: {% if user.email %}{{ user.email }}{% endif %}
+        %0A
+        &nbsp;&nbsp;&nbsp;&nbsp;Given name: {% if user.first_name %}{{ user.first_name }}{% endif %}
+        %0A
+        &nbsp;&nbsp;&nbsp;&nbsp;Family name: {% if user.last_name %}{{ user.last_name }}{% endif %}
+        %0A
+        &nbsp;&nbsp;&nbsp;&nbsp;Affiliation: [e.g. University of Illinois]
+        %0A%0A
+        Message:%20%20%0A
+        %0A%0A%0A%0A
+        {% if user.is_authenticated %}
+        _______________&nbsp;&nbsp;Please do not edit below this line.&nbsp;&nbsp;_______________
+        %0A
+        username: {{ user.username }}%0A
+        {% endif %}
+        " target=""><i class="bi bi-life-preserver"></i>Ask for help and report bugs here</a>
+          <span style="font-size: 1.2rem; color: #c9c9c9">//</span>
+          <a href="https://github.com/CMB-NCSA/cutout-service/releases/tag/{% app_version "v" %}">
+            <i class="bi bi-github" role="img" aria-label="GitHub"></i> {% app_version "v" %}
+          </a>
         </span>
     </div>
   </div>
+  <!--
   <div class="row align-items-end">
     <div class="col-lg-12">
       <span class="text-muted">
-        <a href="#" target="_blank">This project</a> is supported by [funding information].
+        <a href="" target="_blank">This project</a> is supported by [funding information].
       </span>
     </div>
   </div>
+  -->
 </footer>

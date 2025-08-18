@@ -58,6 +58,23 @@ def upload_job_files(job_id):
     )
 
 
+def validate_config(config):
+    '''Validate configuration. Return empty string if valid; return error message if not.'''
+    try:
+        assert config['input_coords']
+    except Exception:
+        return 'Invalid input_coords'
+    try:
+        assert isinstance(config['xsize'], int)
+    except Exception:
+        return 'xsize must be an integer'
+    try:
+        assert isinstance(config['ysize'], int)
+    except Exception:
+        return 'ysize must be an integer'
+    return ''
+
+
 def process_config(job_id, config):
     default_config = {
         'input_coords': '',
@@ -79,9 +96,12 @@ def process_config(job_id, config):
             processed_config[key] = config[key]
         else:
             processed_config[key] = value
-    df = pandas.read_csv(io.StringIO(processed_config['input_coords']), comment='#', skipinitialspace=True)
-    coords = df.to_csv(index=False)
-    processed_config['coords'] = coords
+    if processed_config['input_coords']:
+        df = pandas.read_csv(io.StringIO(processed_config['input_coords']), comment='#', skipinitialspace=True)
+        coords = df.to_csv(index=False)
+        processed_config['coords'] = coords
+    else:
+        logger.warning('No input coordinates provided.')
     return processed_config
 
 

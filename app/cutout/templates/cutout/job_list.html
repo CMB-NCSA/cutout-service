@@ -9,6 +9,7 @@
           <th>UUID</th>
           <th>Status</th>
           <th>Error</th>
+          <th>Actions</th>
           {% if user.is_superuser %}
           <th>Owner</th>
           {% endif %}
@@ -17,7 +18,7 @@
       <tbody>
         {% if job_list %}
         {% for this_job in job_list %}
-        <tr>
+        <tr id="job-{{ this_job.uuid }}">
           <td><a href="../jobs/{{ this_job.uuid }}">{% if this_job.name %}{{ this_job.name }}{% else %}{{ this_job.uuid | truncatechars:9 }}{% endif %}</a></td>
           <td>{{ this_job.created|date:'Y/m/d H:i:s' }}</td>
           <td class="uuid-table"><code>{{ this_job.uuid }}</code></td>
@@ -29,6 +30,11 @@
           {% else %}
           <td></td>
           {% endif %}
+          <td>
+            <a href="#" role="button" class="btn btn-danger" onclick="deleteJob('{{ this_job.uuid }}')">
+              <i class="bi bi-trash"></i> Delete
+            </a>
+          </td>
           {% if user.is_superuser %}
           <td>{{ this_job.owner }}</td>
           {% endif %}
@@ -37,6 +43,28 @@
         {% endif %}
     </tbody>
   </table>
-
-
+  {% block javascript %}
+  <script>
+    deleteJob = async (jobId) => {
+        let url = `/api/job/${jobId}/`;
+        const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+        let headers = new Headers({
+          "Content-Type": "application/json",
+          "Authorization": "Token {{ api_token }}",
+          "X-CSRFToken": csrfToken,
+          // Note: User-Agent header is not mutable on all browsers and so
+          //       is not guaranteed to include the custom suffix.
+          "User-Agent": `${navigator.userAgent} web app`
+        });
+        await fetch(url, { method: "DELETE", headers: headers })
+          .then((Result) => {
+            console.log(JSON.stringify(Result));
+            document.getElementById(`job-${jobId}`).remove();
+          })
+          .catch((errorMsg) => {
+            console.log(errorMsg);
+          });
+      };
+  </script>
+  {% endblock %}
 {% endblock %}

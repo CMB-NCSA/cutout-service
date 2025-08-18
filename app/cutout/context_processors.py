@@ -20,14 +20,15 @@ def user_profile(request):
         except binascii.Error:
             # If incorrectly padded, try the next possible padding.
             pass
-        except Exception as err:
+        except UnicodeDecodeError as err:
             # Do not treat this as an error, because in general Django usernames are not
             # base64-encoded.
-            logger.debug(f'''Error decoding username "{user.username}": {err}''')
+            logger.debug(f'''Username "{user.username}" does not appear to be base64 encoded: {err}''')
             username_b64decoded = ''
         else:
             break
     context = {
         'username_b64decoded': username_b64decoded,
+        'has_perm_run_job': request.user.has_perms(('cutout.run_job',)),
     }
     return context

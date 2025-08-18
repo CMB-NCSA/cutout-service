@@ -15,9 +15,12 @@ class CutoutApi():
     def __init__(self, conf={}):
         # Import credentials and config from environment variables
         self.conf = {
-            'api_url_protocol': os.environ.get('CE_API_URL_PROTOCOL', 'http'),
-            'api_url_authority': os.environ.get('CE_API_URL_AUTHORITY', 'localhost:8000'),
-            'api_url_basepath': os.environ.get('CE_API_URL_BASEPATH', 'api'),
+            'username': os.environ.get('CUTOUT_USERNAME', 'admin'),
+            'password': os.environ.get('CUTOUT_PASSWORD', 'password'),
+            'token': os.environ.get('CUTOUT_API_TOKEN', ''),
+            'api_url_protocol': os.environ.get('CUTOUT_API_URL_PROTOCOL', 'http'),
+            'api_url_authority': os.environ.get('CUTOUT_API_URL_AUTHORITY', 'localhost:8000'),
+            'api_url_basepath': os.environ.get('CUTOUT_API_URL_BASEPATH', 'api'),
             # Max number of requests per second
             'api_rate_limit': int(os.environ.get('API_RATE_LIMIT_USER', '5')),
         }
@@ -28,6 +31,26 @@ class CutoutApi():
         self.conf['api_url_base'] = f'''{self.conf['url_base']}/{self.conf['api_url_basepath']}'''
         self.json_headers = {}
         self.json_headers['Content-Type'] = 'application/json'
+        if self.conf['token']:
+            self.api_token = self.conf['token']
+        else:
+            self.api_token = self.get_api_token()
+        self.json_headers['Authorization'] = f'''Token {self.api_token}'''
+
+    def get_api_token(self):
+        url = f'''{self.conf['api_url_base']}/token/'''
+        response = requests.post(
+            url,
+            headers={
+                'Content-Type': 'application/json',
+            },
+            json={
+                'username': self.conf['username'],
+                'password': self.conf['password'],
+            }
+        )
+        data = self.display_response(response)
+        return data['token']
 
     def rate_limiter(self, response):
         rate_limit_status_code = 429

@@ -44,7 +44,29 @@
         font-size: smaller;
       }
       .nav-item {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
+      }
+      .api-token-container {
+        max-width: 40rem;
+        margin: auto;
+      }
+      .api-token-box {
+        border-color: lightgray;
+        border-width: 2px;
+        border-style: dashed;
+        padding: 1rem;
+      }
+      button.copy-token:hover {
+        background-color:lightgray;
+      }
+      button.copy-token > i {
+        font-size: 2rem;
+      }
+      .text-muted>a {
+        text-decoration: none;
+      }
+      .text-muted>a:hover {
+        text-decoration: underline;
       }
     </style>
   </head>
@@ -56,60 +78,78 @@
       </button>
 
       <div class="collapse navbar-collapse" id="navbar-full">
-      <div class="container-fluid d-flex">
-        <ul class="navbar-nav mr-auto d-flex align-items-center">
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="/" role="button" id="navbarDropdown" data-toggle="dropdown" aria-expanded="false">
-              <img src="{% static 'images/des-logo-banner.png' %}" style="max-height: 2rem;" />
-            </a>
-            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-              <a class="dropdown-item" title="Home" href="/"><i class="bi bi-house"></i> Home</a>
-              <div class="dropdown-divider"></div>
-              <a class="dropdown-item" target="_blank" title="Source code" href="https://github.com/CMB-NCSA/cutout-service"><i class="bi-github" role="img" aria-label="GitHub"></i> Source Code</a>
-            </div>
-          </li>
-          {% if user.is_authenticated %}
-          <li class="nav-item">
-            <a class="nav-link" href="/jobs"><i class="bi bi-motherboard"></i> Jobs</a>
-          </li>
-          {% endif %}
-        </ul>
-      </div>
-      <div class="container-fluid d-flex flex-row-reverse">
-        <ul class="navbar-nav ml-auto d-flex align-items-center">
-          
-          {% if user.is_authenticated and user.is_superuser %}
-          <li class="nav-item">
-            <a class="nav-link" href="/admin/auth/user"> Admin </a>
-          </li>
-          {% endif %}
-          <li class="nav-item">
-            <a class="nav-link" href="/accounts/login">
-              <i class="bi bi-person"></i>
-                {% if show_profile or user.is_authenticated %}
-                  Profile
-                {% else %}
-                  Login
-                {% endif %}
-            </a>
-          </li>
-          {% if user.is_authenticated %}
-          <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
+        <div class="container-fluid d-flex">
+          <ul class="navbar-nav mr-auto d-flex align-items-center">
             <li class="nav-item">
-              <button type="submit" class="btn-link nav-link">
-                <i class="bi bi-box-arrow-left"></i> Log out
-              </button>
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="{% static 'images/des-logo-banner.png' %}" style="max-height: 2rem;" />
+              </a>
+              <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="navbarDropdown">
+                <li>
+                  <a class="dropdown-item" target="_blank" title="Docs" href="https://github.com/CMB-NCSA/cutout-service/tree/main/docs">
+                    <i class="bi bi-book-half"></i> Docs
+                  </a>
+                </li>
+                <li>
+                  <div class="dropdown-divider"></div>
+                </li>
+                <li>
+                  <a class="dropdown-item" target="_blank" title="Source code" href="https://github.com/CMB-NCSA/cutout-service">
+                    <i class="bi-github" role="img" aria-label="GitHub"></i> Source Code
+                  </a>
+                </li>
+              </ul>
             </li>
-          </form>
-          {% endif %}
-        </ul>
-      </div>
+            <li class="nav-item"><a class="nav-link" title="Home" href="/"><i class="bi bi-house"></i> Home</a></li>
+            {% if user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="/jobs"><i class="bi bi-motherboard"></i> Jobs</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+        <div class="container-fluid d-flex flex-row-reverse">
+          <ul class="navbar-nav ml-auto d-flex align-items-center">
+            
+            {% if user.is_authenticated and has_perm_run_job %}
+            <li class="nav-item">
+              <button type="button" class="btn btn-success" title="API Token" id="apiTokenAlert"><i class="bi bi-person-vcard" style="font-size: 1.2rem;"></i>API token</button>
+            </li>
+            {% endif %}
+            {% if user.is_authenticated and user.is_superuser %}
+            <li class="nav-item">
+              <a class="nav-link" href="/admin/auth/user"><i class="bi bi-person-gear"></i> Admin </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+              <a class="nav-link" href="/accounts/login">
+                <i class="bi bi-person"></i>
+                  {% if show_profile or user.is_authenticated %}
+                    Profile
+                  {% else %}
+                    Login
+                  {% endif %}
+              </a>
+            </li>
+            {% if user.is_authenticated %}
+            <form action="{% url 'logout' %}" method="post">
+              {% csrf_token %}
+              <li class="nav-item">
+                <button type="submit" class="btn-link nav-link">
+                  <i class="bi bi-box-arrow-left"></i> Log out
+                </button>
+              </li>
+            </form>
+            {% endif %}
+          </ul>
+        </div>
       </div>
     </nav>
 
     <main role="main" class="container">
+      {% bootstrap_messages %}
       <div class="content">
+        <div id="message-box"></div>
         {% block content %}
         {% endblock %}
       </div>
@@ -120,6 +160,67 @@
       {% endblock %}
     </div>
   </body>
+
+  <script>
+    const displayAlert = (elementId, message, type) => {
+      const wrapper = document.createElement("div");
+      let alertPlaceholder = document.getElementById(elementId);
+      wrapper.innerHTML = [
+        `<div class="alert alert-${type} alert-dismissible api-token-container" role="alert">`,
+        `   <div>${message}</div>`,
+        '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+        "</div>",
+      ].join("");
+
+      alertPlaceholder.innerHTML = "";
+      alertPlaceholder.append(wrapper);
+    };
+
+    function copyToken() {
+      // Get the token value from the code tag
+      var copyText = document.getElementById("api-token-value");
+      // Copy the token value to the clipboard
+      navigator.clipboard.writeText(copyText.innerHTML);
+      var copyBtn = document.getElementById("copy-token-btn");
+      copyBtn.innerHTML = `<i class="bi bi-clipboard-check"></i>`;
+    }
+
+    const tokenAlertTrigger = document.getElementById("apiTokenAlert");
+    if (tokenAlertTrigger) {
+      tokenAlertTrigger.addEventListener("click", () => {
+        // URL of the API endpoint returning the API token
+        let url = "{% url 'token' %}";
+        fetch(url, { method: "GET" })
+          .then((Result) => Result.json())
+          .then((data) => {
+            return data.token;
+          })
+          .then((apiToken) => {
+            let alertBody = `
+              <p>Your API token is shown below. Press the clipboard button to copy it.</p>
+              <div class="container">
+                <div class="row">
+                  <div class="col-8 offset-1 api-token-box">
+                      <span class="align-middle"><code id="api-token-value">${apiToken}</code></span>
+                  </div>
+                  <div class="col-2">
+                    <button id="copy-token-btn" type="button" class="btn copy-token" onclick="copyToken()" title="Copy to clipboard">
+                     <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              `;
+            displayAlert("message-box", alertBody, "success");
+            // document.getElementById('message-box').scrollIntoView();
+            window.scrollTo(0,0)
+          })
+          .catch((errorMsg) => {
+            console.log(errorMsg);
+          });
+      });
+    }
+  </script>
 
   {% block javascript %}{% endblock %}
   {% block extra_javascript %}{% endblock %}
