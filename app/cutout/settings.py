@@ -19,6 +19,7 @@ S3_BASE_DIR = os.environ.get('S3_BASE_DIR', '').strip('/')
 # Set JOB_SCRATCH_MAX_SIZE to 0 to determine scratch volume capacity using os.statvfs
 JOB_SCRATCH_MAX_SIZE = int(float(os.getenv('JOB_SCRATCH_MAX_SIZE', str(0 * 1024**3))))  # 0 GiB
 JOB_SCRATCH_FREE_SPACE = int(float(os.getenv('JOB_SCRATCH_FREE_SPACE', str(5 * 1024**3))))  # 5 GiB
+COLLECT_METRICS_INTERVAL = int(os.getenv('COLLECT_METRICS_INTERVAL', 300))
 
 # Email for support requests
 SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', "devnull@example.com")

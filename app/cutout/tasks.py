@@ -12,7 +12,7 @@ import logging
 import json
 import io
 from .object_store import ObjectStore
-from .models import Job, JobFile
+from .models import Job, JobFile, JobMetric, FileMetric
 from .models import update_job_state
 from django.conf import settings
 from celery.signals import task_failure
@@ -39,6 +39,12 @@ def create_job_file_objects(job_id):
                 job=job,
                 path=path.replace(s3_basepath, '', 1),
                 size=file_size,
+            )
+            # Record the job file metadata for metrics collection
+            FileMetric.objects.create(
+                size=file_size,
+                owner=job.owner,
+                file_type=FileMetric.FileType.JOB,
             )
 
 
@@ -230,6 +236,12 @@ def task_failed(task_id=None, exception=None, args=None, traceback=None, einfo=N
     try:
         job_id = kwargs['kwargs']['job_id']
         job = Job.objects.get(uuid__exact=job_id)
+        # Record the job metadata for metrics collection
+        JobMetric.objects.create(
+            status=Job.JobStatus.FAILURE,
+            owner=job.owner,
+            config=job.config,
+        )
         if not job.error_info:
             err_msg = f"System Error: {str(einfo)}"
             update_job_state(job_id, Job.JobStatus.FAILURE, error_info=err_msg)

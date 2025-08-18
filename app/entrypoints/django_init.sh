@@ -9,8 +9,8 @@ python manage.py migrate
 # python manage.py createcachetable
 echo "Collect static files..."
 python manage.py collectstatic --no-input
-# echo "Initializing periodic tasks..."
-# python manage.py initialize_periodic_tasks
+echo "Initializing periodic tasks..."
+python manage.py initialize_periodic_tasks
 
 echo "Create Django superuser..."
 while [[ "$SUCCESS" != "true" ]]; do

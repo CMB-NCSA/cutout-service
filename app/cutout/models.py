@@ -72,3 +72,53 @@ def update_job_state(job_id, state, error_info=''):
     if state in [Job.JobStatus.SUCCESS, Job.JobStatus.FAILURE]:
         job.current_processes = []
     job.save()
+
+
+class JobMetric(models.Model):
+    time_collected = models.DateTimeField(auto_now_add=True, verbose_name='Time Collected')
+    status = models.CharField(max_length=10, choices=Job.JobStatus.choices)
+    owner = models.ForeignKey(User, null=False, blank=False, on_delete=models.CASCADE)
+    config = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f'job metric: {self.time_collected}, {self.status}, {self.owner}'
+
+
+class FileMetric(models.Model):
+    class FileType(models.TextChoices):
+        JOB = 'job'
+
+    time_collected = models.DateTimeField(auto_now_add=True, verbose_name='Time Collected')
+    size = models.BigIntegerField(null=False, blank=False, default=0)  # Size of the stored file in bytes
+    owner = models.ForeignKey(User, null=False, blank=False, on_delete=models.CASCADE)
+    file_type = models.CharField(max_length=6, choices=FileType.choices, blank=False, null=False, default=FileType.JOB)
+
+    def __str__(self):
+        return f'file metric: {self.time_collected}, {self.file_type}, {self.size}, {self.owner}'
+
+
+class Metric(models.Model):
+    time_collected = models.DateTimeField(auto_now_add=True, verbose_name='Time Collected')
+    jobs_run = models.IntegerField(null=False, blank=False, default=0)
+    jobs_success = models.IntegerField(null=False, blank=False, default=0)
+    jobs_failure = models.IntegerField(null=False, blank=False, default=0)
+    users_count = models.IntegerField(null=False, blank=False, default=0)
+    users_active = models.IntegerField(null=False, blank=False, default=0)
+    job_files_total = models.IntegerField(null=False, blank=False, default=0)
+    job_files_size = models.BigIntegerField(null=False, blank=False, default=0)
+    job_files_added = models.IntegerField(null=False, blank=False, default=0)
+    job_files_added_size = models.BigIntegerField(null=False, blank=False, default=0)
+
+    def __str__(self):
+        return (
+            f'time_collected: {self.time_collected}, '
+            f'jobs_run: {self.jobs_run}, '
+            f'jobs_success: {self.jobs_success}, '
+            f'jobs_failure: {self.jobs_failure}, '
+            f'users_count: {self.users_count}, '
+            f'users_active: {self.users_active}, '
+            f'job_files_total: {self.job_files_total}, '
+            f'job_files_size: {self.job_files_size}, '
+            f'job_files_added: {self.job_files_added}, '
+            f'job_files_added_size: {self.job_files_added_size}, '
+        )

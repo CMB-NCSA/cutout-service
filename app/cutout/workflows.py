@@ -2,7 +2,7 @@ from celery import chain
 import json
 import os
 import yaml
-from .models import Job
+from .models import Job, JobMetric
 from .models import update_job_state
 from celery import shared_task
 from .tasks import generate_cutouts
@@ -85,6 +85,13 @@ def workflow_complete(job_id=''):
     logger.info(f'''Workflow for job "{job_id}" completed successfully.''')
     # Set workflow status to success
     update_job_state(job_id, Job.JobStatus.SUCCESS)
+    # Record the job metadata for metrics collection
+    job = Job.objects.get(uuid__exact=job_id)
+    JobMetric.objects.create(
+        status=Job.JobStatus.SUCCESS,
+        owner=job.owner,
+        config=job.config,
+    )
 
 
 @shared_task(name='Workflow Job Error Handler')
