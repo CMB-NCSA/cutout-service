@@ -82,7 +82,7 @@
           <ul class="navbar-nav mr-auto d-flex align-items-center">
             <li class="nav-item">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <img src="{% static 'images/des-logo-banner.png' %}" style="max-height: 2rem;" />
+                <img src="{% static 'images/scimma_logo.png' %}" style="max-height: 2rem;" /> Cutout Service
               </a>
               <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="navbarDropdown">
                 <li>
@@ -102,6 +102,9 @@
             </li>
             <li class="nav-item"><a class="nav-link" title="Home" href="/"><i class="bi bi-house"></i> Home</a></li>
             {% if user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="/cutout"><i class="bi bi-scissors"></i> Cutout</a>
+            </li>
             <li class="nav-item">
               <a class="nav-link" href="/jobs"><i class="bi bi-motherboard"></i> Jobs</a>
             </li>

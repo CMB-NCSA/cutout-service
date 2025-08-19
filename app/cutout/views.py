@@ -15,14 +15,15 @@ from rest_framework.permissions import BasePermission
 from django.http import HttpResponseForbidden
 from rest_framework import viewsets, status
 from .models import Job, JobFile
-from .models import update_job_state
-from .workflows import run_workflow
+from .workflows import launch_workflow
 from .serializers import JobSerializer, UserSerializer
 from rest_framework.response import Response
 from .object_store import ObjectStore
-from .tasks import process_config, validate_config
+from .tasks import process_config
 from .tasks_api import revoke_job, delete_job, delete_job_files
 from celery import chain, group
+from .forms import CutoutForm
+from django.http import HttpResponseRedirect, HttpResponseBadRequest
 from .log import get_logger
 logger = get_logger(__name__)
 
@@ -134,8 +135,7 @@ class JobViewSet(viewsets.ModelViewSet):
         job_name = new_job_data['name']
         new_job = Job.objects.get(uuid__exact=job_id)
         # Process the config and update the job record
-        config = process_config(job_id, new_job_data['config'])
-        err_msg = validate_config(config)
+        config, err_msg = process_config(new_job_data['config'])
         try:
             assert not err_msg
         except AssertionError:
@@ -151,18 +151,9 @@ class JobViewSet(viewsets.ModelViewSet):
         # Launch workflow as async Celery tasks
         logger.debug(f'''Job info: {response.data}''')
         logger.debug(f'''Launching Celery task for workflow "{job_name}"...''')
-        try:
-            # Launch workflow
-            run_workflow(job_id, config)
-        except Exception as err:
-            err_msg = f'Failed to launch workflow: {err}'
-            logger.error(err_msg)
-            response = Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data=f'''{err_msg}''',
-            )
-            update_job_state(job_id, Job.JobStatus.FAILURE, error_info=err_msg)
-        logger.debug(f'''[{response.status_code}] {response.data}''')
+        updated_response = launch_workflow(job_id, config)
+        if updated_response:
+            response = updated_response
         return response
 
     def destroy(self, request, pk=None, *args, **kwargs):
@@ -208,6 +199,63 @@ def job_list(request):
     return render(request, "cutout/job_list.html", context)
 
 
+@permission_required("cutout.run_job", raise_exception=True)
+def cutout_form(request):
+    # if this is a POST request we need to process the form data
+    if request.method == "POST":
+        # create a form instance and populate it with data from the request:
+        form = CutoutForm(request.POST)
+        # check whether it's valid:
+        if form.is_valid():
+            # process the data in form.cleaned_data as required
+
+            logger.debug(f'''Form data: {form.cleaned_data}''')
+            name = form.cleaned_data['job_name']
+            description = form.cleaned_data['job_description']
+            new_job = Job(
+                name=name,
+                description=description,
+                owner=request.user,
+            )
+            job_id = str(new_job.uuid)
+            input_csv = form.cleaned_data['input_csv'].replace('\r\n', '\n')
+            xsize = form.cleaned_data['xsize']
+            ysize = form.cleaned_data['ysize']
+            bands = form.cleaned_data['bands']
+            # colorset = form.cleaned_data['colorset']
+            config, err_msg = process_config(config={
+                'input_csv': input_csv,
+                'xsize': xsize,
+                'ysize': ysize,
+                'bands': bands,
+                # 'colorset': colorset,
+            })
+            try:
+                assert not err_msg
+            except AssertionError:
+                logger.error(f'''Invalid config: {err_msg}''')
+                new_job.delete()
+                return HttpResponseBadRequest(content=f'''Invalid config: {err_msg}''')
+            new_job.config = config
+            new_job.save()
+            # Launch workflow as async Celery tasks
+            logger.debug(f'''Launching Celery task for workflow "{name}"...''')
+            response = launch_workflow(job_id, config)
+            if response:
+                return HttpResponseBadRequest(content=response.data)
+            return HttpResponseRedirect(f'''/jobs/{job_id}''')
+
+    # if a GET (or any other method) we'll create a blank form
+    else:
+        form = CutoutForm()
+
+    context = {
+        # "form": form,
+        "textarea_initial": '''RA,DEC,XSIZE,YSIZE\n49.9208333333, -19.4166666667, 6.6, 3.3'''
+    }
+    return render(request, "cutout/cutout_form.html", context)
+
+
 class JobDetailView(DetailView):
 
     model = Job
@@ -222,9 +270,9 @@ class JobDetailView(DetailView):
         # The apparent double-newline in the CSV text rendering is not actually a bug;
         # this is how a single newline renders when using single-quotes.
         context["coords"] = self.object.config.pop('coords')
-        for filtered_key in ['outdir', 'dbname', 'prefix']:
+        for filtered_key in ['prefix']:
             self.object.config.pop(filtered_key)
-        self.object.config['logfile'] = self.object.config['logfile'].replace(f'/scratch/{job_id}', '')
+        self.object.config['logfile'] = '/cutout.log'
         context["config"] = yaml.dump(self.object.config, indent=2, sort_keys=False)
         return context
 

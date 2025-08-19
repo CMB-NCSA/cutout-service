@@ -6,7 +6,7 @@ from multiprocessing import Process
 import time
 from datetime import datetime
 import random
-# Append the calculation_engine_api module to the Python path for import
+# Append the Cutout API module to the Python path for import
 sys.path.append(os.path.join(str(Path(__file__).resolve().parent.parent), 'app'))
 from cutout.tests.api import CutoutApi  # pyright: ignore[reportMissingImports]
 
@@ -21,7 +21,7 @@ def delete_all():
 
 def run_workflow():
     response = api.job_create(name=f'''cutout-{random.randrange(10000, 99999)}''', config={
-        'input_coords': '''RA,DEC,XSIZE,YSIZE\n#0.29782658,0.029086056,3,3\n49.9208333333,-19.4166666667,6.6,6.6\n'''
+        'input_csv': '''RA,DEC,XSIZE,YSIZE\n#0.29782658,0.029086056,3,3\n49.9208333333,-19.4166666667,6.6,6.6\n'''
     })
     job_id = response['uuid']
     time_sleep = 5  # seconds

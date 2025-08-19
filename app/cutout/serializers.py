@@ -20,7 +20,7 @@ class JobSerializer(serializers.HyperlinkedModelSerializer):
         fields = read_only_fields + ['name', 'description', 'files', 'config']
     files = serializers.SerializerMethodField()
     config = serializers.JSONField(initial={
-        'input_coords': 'RA,DEC,XSIZE,YSIZE\n#0.29782658,0.029086056,3,3\n49.9208333333,-19.4166666667,6.6,6.6\n'
+        'input_csv': 'RA,DEC,XSIZE,YSIZE\n#0.29782658,0.029086056,3,3\n49.9208333333,-19.4166666667,6.6,6.6\n'
     })
 
     def get_files(self, job):

@@ -17,7 +17,7 @@ class Command(BaseCommand):
                 name=periodic_task.task_name,
                 defaults={
                     'interval': interval,
-                    'task': f'calculation_engine.system_tasks.{periodic_task.task_handle}',
+                    'task': f'cutout.tasks_system.{periodic_task.task_handle}',
                     'enabled': periodic_task.task_initially_enabled,
                 }
             )

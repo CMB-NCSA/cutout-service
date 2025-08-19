@@ -1,8 +1,15 @@
 {% extends 'cutout/base.html' %}
 {% load static %}
 {% block content %}
-<h1>DES Cutout Service</h1>
-
-{% lorem 10 p %} 
+<h1>Astrophysical Survey Data Cutout Service</h1>
+<p>
+    This service allows researchers to generate cutouts from image files based on RA/DEC coordinates and areal dimensions about those coordinates. The available images are sourced from a growing list of astrophysical survey datasets, including the Dark Energy Survey. 
+<p>
+</p>
+    Generating cutouts is an asynchronous operation, leveraging our computing cluster to efficiently run workloads in the background so that you can launch cutout jobs and then monitor for completion at your convenience. Jobs can be configured and submitted for processing using the web interface here, or you can use the RESTful HTTP API that provides comprehensive programmatic interaction.
+</p>
+</p>
+    To get started, click the login button to authenticate using your preferred institutional identity provider; this should be the same identity you use when accessing other SCIMMA services. Review your profile information and follow the instructions to request authorization to use the service.
+</p>
 
 {% endblock %}

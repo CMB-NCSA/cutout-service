@@ -50,7 +50,7 @@ Create a Python script `test.py` under `/scripts/`, using the `CutoutApi` class 
 
 ```python
 from pathlib import Path
-# Append the calculation_engine_api module to the Python path for import
+# Append the Cutout API module to the Python path for import
 sys.path.append(os.path.join(str(Path(__file__).resolve().parent.parent), 'app'))
 from cutout.tests.api import CutoutApi  # pyright: ignore[reportMissingImports]
 

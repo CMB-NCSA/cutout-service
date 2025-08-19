@@ -92,6 +92,7 @@ services:
     volumes:
       - "django-static:${APP_ROOT_DIR:-/opt}/app/static"
       - ../data/files/des_archive:/des_archive
+      # - /mnt/des_archive:/des_archive:ro
       - ../data/db/duckdb:/data/db
       - ../app:/opt/app
 
@@ -153,6 +154,7 @@ services:
       S3_BASE_DIR: "${S3_BASE_DIR:-descut}"
     volumes:
       - ../data/files/des_archive:/des_archive
+      # - /mnt/des_archive:/des_archive:ro
       - ../data/db/duckdb:/data/db
       - ../app:/opt/app
       - scratch:/scratch

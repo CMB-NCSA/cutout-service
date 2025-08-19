@@ -1,0 +1,59 @@
+{% extends 'cutout/base.html' %}
+{% load static %}
+{% block content %}
+<style>
+    .monospace-input {
+        font-family: 'Courier New', Courier, monospace;
+    }
+</style>
+<form action="/cutout/" method="post">
+    {% csrf_token %}
+    <div class="container">
+        <div class="row">
+            <div class="col-4 offset-1">
+                <div class="my-3">
+                    <label for="id_job_name">Job name:</label>
+                    <input type="text" name="job_name" value="my-job" placeholder="Job name" style="width: 300px;"
+                        class="form-control" maxlength="100" required id="id_job_name">
+                </div>
+                <div class="my-3">
+                    <label for="id_job_description">Job description:</label>
+                    <input type="text" name="job_description" value="not your job" placeholder="Job description"
+                        style="width: 300px;" class="form-control" maxlength="200" required id="id_job_description">
+                </div>
+                <div class="row">
+                    <div class="col-4 offset-0">
+                        <div class="my-3">
+                            <label for="id_xsize">Global X Size:</label>
+                            <input type="text" name="xsize" value="1" placeholder="1" style="width: 50%;" class="form-control monospace-input" required
+                            id="id_xsize">
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="my-3">
+                            <label for="id_ysize">Global Y Size:</label>
+                            <input type="text" name="ysize" value="1" placeholder="1" style="width: 50%;" class="form-control monospace-input" required
+                                id="id_ysize">
+                        </div>
+                    </div>
+                </div>
+                <div class="my-3">
+                    <label for="id_bands">Bands:</label>
+                    <input type="text" name="bands" value="all" placeholder="all" style="width: 300px;" class="form-control"
+                        maxlength="30" required id="id_bands">
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="my-3">
+                    <label for="id_input_csv">Coordinates:</label>
+                    <textarea name="input_csv" rows="10" placeholder="" style="width: 100%;" class="form-control monospace-input"
+                    required id="id_input_csv">{{ textarea_initial }}</textarea>
+                </div>
+                <div class="my-3">
+                    <input type="submit" value="Generate cutouts" class="btn btn-primary">
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

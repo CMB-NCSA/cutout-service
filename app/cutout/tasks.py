@@ -1,8 +1,10 @@
 from celery import shared_task
 from dotmap import DotMap
+import numpy as np
 import pandas
 import duckdb
 import os
+import math
 import time
 import multiprocessing as mp
 from des_cutter import fitsfinder
@@ -58,58 +60,119 @@ def upload_job_files(job_id):
     )
 
 
+def validate_cutout_size_from_table(df):
+    '''Determine if the cutout size spec, if present, in the input DataFrame is valid.'''
+    err_msg = ''
+    try:
+        # If cutout size is not specified in table, it is valid
+        if 'XSIZE' not in df or 'YSIZE' not in df:
+            return 'no size spec'
+        if ('XSIZE' in df and 'YSIZE' not in df) or ('YSIZE' in df and 'XSIZE' not in df):
+            return 'only one size spec'
+        xsizes = df.XSIZE.values
+        ysizes = df.YSIZE.values
+        err_msg = 'Unequal number of cutout size values'
+        assert len(xsizes) == len(ysizes)
+        err_msg = 'Non-numeric value'
+        assert np.issubdtype(xsizes.dtype, np.number)
+        assert np.issubdtype(ysizes.dtype, np.number)
+        for val in np.concatenate((xsizes, ysizes)):
+            err_msg = 'NaN detected'
+            assert not math.isnan(val)
+            err_msg = 'Value must be greater than zero'
+            assert val > 0
+        err_msg = ''
+    except Exception as err:
+        logger.warning(f'Invalid cutout size specification: {err}, {err_msg}')
+    return err_msg
+
+
 def validate_config(config):
     '''Validate configuration. Return empty string if valid; return error message if not.'''
     try:
-        assert config['input_coords']
+        assert config['input_csv']
     except Exception:
-        return 'Invalid input_coords'
+        return 'Coordinate table cannot be empty'
     try:
-        assert isinstance(config['xsize'], int)
-    except Exception:
-        return 'xsize must be an integer'
+        df = pandas.read_csv(io.StringIO(config['input_csv']), comment='#', skipinitialspace=True)
+        df.to_csv(index=False)
+        logger.debug(df)
+    except Exception as err:
+        return f'Coordinate table parsing error: {err}'
     try:
-        assert isinstance(config['ysize'], int)
-    except Exception:
-        return 'ysize must be an integer'
+        logger.debug(df.RA)
+        logger.debug(df.DEC)
+        assert len(df.RA.values)
+        assert len(df.DEC.values)
+    except Exception as err:
+        return f'Coordinate table must have one or more RA and DEC values: {err}'
+    try:
+        assert len(df.RA.values) == len(df.DEC.values)
+    except Exception as err:
+        return f'Coordinate table must have the same number of RA and DEC values: {err}'
+    try:
+        for val in df.RA.values + df.DEC.values:
+            assert isinstance(val, float)
+            assert not math.isnan(val)
+    except Exception as err:
+        return f'Coordinate table RA and DEC values must be numeric values: {err}'
+    for param in ['xsize', 'ysize']:
+        if param in config:
+            try:
+                assert isinstance(config[param], int)
+            except Exception:
+                return f'{param} must be an integer'
+            try:
+                assert config[param] > 0
+            except Exception:
+                return f'{param} must be greater than zero'
+    err_msg = validate_cutout_size_from_table(df)
+    if err_msg and err_msg != 'no size spec':
+        return f'Invalid cutout size specification in coordinate table: {err_msg}'
+    # TODO: Complete the validation logic for other config parameters.
     return ''
 
 
-def process_config(job_id, config):
-    default_config = {
-        'input_coords': '',
-        'coords': '',
-        'xsize': 1,
-        'ysize': 1,
-        'dbname': '/data/db/des_metadata.duckdb',
-        'bands': 'all',
-        'prefix': 'DES',
-        'colorset': ['i', 'r', 'g'],
-        'MP': False,
-        'verbose': False,
-        'outdir': f'/scratch/{job_id}',
-        'logfile': f'/scratch/{job_id}/cutout.log',
-    }
+def process_config(config):
+    default_config = settings.DEFAULT_CONFIG
     processed_config = {}
     for key, value in default_config.items():
         if key in config:
             processed_config[key] = config[key]
         else:
             processed_config[key] = value
-    if processed_config['input_coords']:
-        df = pandas.read_csv(io.StringIO(processed_config['input_coords']), comment='#', skipinitialspace=True)
-        coords = df.to_csv(index=False)
-        processed_config['coords'] = coords
+    if processed_config['input_csv']:
+        df = pandas.read_csv(io.StringIO(processed_config['input_csv']), comment='#', skipinitialspace=True)
+        processed_config['coords'] = df.to_csv(index=False)
     else:
         logger.warning('No input coordinates provided.')
-    return processed_config
+        return processed_config
+
+    # If the cutout size parameters are provided per-coordinate in the CSV text,
+    # validate the values and ignore the global values.
+    err_msg = validate_cutout_size_from_table(df)
+    if not err_msg or err_msg == 'no size spec':
+        # Remove the size overrides
+        processed_config.pop('xsize')
+        processed_config.pop('ysize')
+        # If the user also specified global values, ignore them.
+        if 'xsize' in config or 'ysize' in config:
+            logger.info('Ignoring global cutout size parameters because per-coordinate sizes are specified.')
+    else:
+        logger.info('Using global cutout size parameters.')
+    err_msg = validate_config(processed_config)
+    if err_msg:
+        logger.error(f'Invalid config: {err_msg}')
+    return processed_config, err_msg
 
 
 @shared_task(name="Generate cutouts")
 def generate_cutouts(job_id, config={}):
-    config = DotMap(process_config(job_id, config))
+    config = DotMap(config)
 
     # Make sure that outdir exists
+    config.outdir = f'/scratch/{job_id}'
+    config.logfile = os.path.join(config.outdir, 'cutout.log')
     os.makedirs(config.outdir, exist_ok=True)
 
     # Configure logging
@@ -135,7 +198,7 @@ def generate_cutouts(job_id, config={}):
     cutter_log.debug(json.dumps(config.toDict(), indent=2))
 
     # Read in CSV file with pandas
-    df = pandas.read_csv(io.StringIO(config.input_coords), comment='#', skipinitialspace=True)
+    df = pandas.read_csv(io.StringIO(config.input_csv), comment='#', skipinitialspace=True)
     cutter_log.debug(f'''Input table DataFrame:\n{df}''')
     ra = df.RA.values  # if you only want the values otherwise use df.RA
     dec = df.DEC.values
@@ -149,7 +212,7 @@ def generate_cutouts(job_id, config={}):
     # Check the xsize and ysizes
     xsize, ysize = fitsfinder.check_xysize(df, config, nobj)
     # connect to the DuckDB database -- via filename
-    dbh = duckdb.connect(config.dbname, read_only=True)
+    dbh = duckdb.connect(settings.CUTOUT_DATA_DB_PATH, read_only=True)
 
     # Get archive_root
     archive_root = fitsfinder.get_archive_root(verb=False)

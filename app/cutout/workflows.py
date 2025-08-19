@@ -9,10 +9,29 @@ from .tasks import generate_cutouts
 from django.conf import settings
 from .object_store import ObjectStore
 from datetime import datetime, timezone
+from rest_framework.response import Response
+from rest_framework import status
 from .log import get_logger
 logger = get_logger(__name__)
 
 s3 = ObjectStore()
+
+
+def launch_workflow(job_id, config):
+    response = None
+    try:
+        # Launch workflow with validated config
+        run_workflow(job_id, config)
+    except Exception as err:
+        err_msg = f'Failed to launch workflow: {err}'
+        logger.error(err_msg)
+        response = Response(
+            status=status.HTTP_400_BAD_REQUEST,
+            data=f'''{err_msg}''',
+        )
+        update_job_state(job_id, Job.JobStatus.FAILURE, error_info=err_msg)
+        logger.debug(f'''[{response.status_code}] {response.data}''')
+    return response
 
 
 def run_workflow(job_id, config) -> None:

@@ -1,6 +1,7 @@
 from pathlib import Path
 import logging.config
 import os
+import json
 from corsheaders.defaults import default_headers
 
 django_base_dir = Path(__file__).resolve().parent.parent
@@ -11,10 +12,27 @@ APP_VERSION = '0.1.0'
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-dummy-secret')
 DJANGO_SUPERUSER_USERNAME = os.getenv('DJANGO_SUPERUSER_USERNAME', 'admin')
-
 APP_ROOT_DIR = os.environ.get('APP_ROOT_DIR', '/opt')
 assert os.path.isabs(APP_ROOT_DIR)
 S3_BASE_DIR = os.environ.get('S3_BASE_DIR', '').strip('/')
+CUTOUT_DATA_DB_PATH = os.getenv('CUTOUT_DATA_DB_PATH', '/data/db/des_metadata.duckdb')
+# Default cutout job config
+CUTOUT_DEFAULT_CONFIG_PATH = os.getenv('CUTOUT_DEFAULT_CONFIG_PATH', '')
+if os.path.isfile(CUTOUT_DEFAULT_CONFIG_PATH):
+    with open(CUTOUT_DEFAULT_CONFIG_PATH) as default_config_file:
+        DEFAULT_CONFIG = json.load(default_config_file)
+else:
+    DEFAULT_CONFIG = {
+        'input_csv': '',
+        'coords': '',
+        'xsize': 1,
+        'ysize': 1,
+        'bands': 'all',
+        'prefix': 'DES',
+        'colorset': ['i', 'r', 'g'],
+        'MP': False,
+        'verbose': False,
+    }
 
 # Set JOB_SCRATCH_MAX_SIZE to 0 to determine scratch volume capacity using os.statvfs
 JOB_SCRATCH_MAX_SIZE = int(float(os.getenv('JOB_SCRATCH_MAX_SIZE', str(0 * 1024**3))))  # 0 GiB
