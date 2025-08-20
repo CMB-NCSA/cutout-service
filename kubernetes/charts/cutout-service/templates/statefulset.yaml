@@ -79,6 +79,9 @@ spec:
           - name: static-files
             mountPath: /opt/static
             subPath: static
+          - name: metadata-db
+            mountPath: /data/db
+            subPath: db
       - name: nginx
         image: "{{ .Values.cutout_server.proxy.image.repository }}:{{ .Values.cutout_server.proxy.image.tag }}"
         imagePullPolicy: {{ .Values.cutout_server.proxy.image.pullPolicy }}
@@ -129,6 +132,9 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Mi
+        - name: metadata-db
+          persistentVolumeClaim:
+            claimName: metadata-db
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -197,6 +203,15 @@ spec:
           - name: job-scratch
             mountPath: /scratch
             subPath: scratch
+          - name: metadata-db
+            mountPath: /data/db
+            subPath: db
+            readOnly: true
+          {{- if .Values.data.des_archive.enabled }}
+          - name: des-archive
+            mountPath: /des_archive
+            readOnly: true
+          {{- end }}
         {{- with  .Values.celery.workers.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -231,6 +246,14 @@ spec:
             sizeLimit: {{ .size }}
           {{- end }}
           {{- end }}
+        - name: metadata-db
+          persistentVolumeClaim:
+            claimName: metadata-db
+        {{- if .Values.data.des_archive.enabled }}
+        - name: des-archive
+          persistentVolumeClaim:
+            claimName: des-archive
+        {{- end }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

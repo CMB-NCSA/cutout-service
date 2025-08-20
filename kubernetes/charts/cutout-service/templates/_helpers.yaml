@@ -9,6 +9,10 @@
   value: {{ .Values.cutout_server.data_init | quote }}
 - name: APP_ROOT_DIR
   value: {{ .Values.cutout_server.app_root_dir }}
+- name: DES_CUTTER_DIR
+  value: {{ .Values.cutout_server.des_cutter_dir | default "/" | quote }}
+- name: DES_ARCHIVE_ROOT
+  value: {{ .Values.cutout_server.des_archive_root | default "/des_archive" | quote }}
 - name: API_SERVER_HOST
   value: {{ .Values.cutout_server.service.host }}
 - name: API_SERVER_PORT
@@ -50,6 +54,8 @@
   value: "{{ .Values.cutout_server.api_rate_limit.download }}"
 - name: REDIS_SERVICE
   value: "{{ .Values.redis.fullnameOverride }}-master"
+- name: SUPPORT_EMAIL
+  value: {{ .Values.cutout_server.support_email | quote }}
 {{- end }}
 
 {{- define "celery.env" -}}

@@ -23,7 +23,7 @@ services:
           /static \
           /scratch
     volumes:
-      - "django-static:${APP_ROOT_DIR:-/opt}/app/static"
+      - django-static:/static
       - scratch:/scratch
   api-server:
     image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
@@ -46,6 +46,7 @@ services:
       DATA_INIT: "${DATA_INIT:-true}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-true}"
       DEV_MODE: "${DEV_MODE:-true}" # Enable Django dev server instead of uvicorn
+      SUPPORT_EMAIL: "${SUPPORT_EMAIL:-devnull@example.com}" # Enable Django dev server instead of uvicorn
       # Service configuration
       API_SERVER_HOST: "${API_SERVER_HOST:-api-server}"
       API_SERVER_PORT: "${API_SERVER_PORT:-8000}"
@@ -90,7 +91,7 @@ services:
       OIDC_OP_JWKS_ENDPOINT: "${OIDC_OP_JWKS_ENDPOINT-}"
       OIDC_OP_LOGOUT_ENDPOINT: "${OIDC_OP_LOGOUT_ENDPOINT-}"
     volumes:
-      - "django-static:${APP_ROOT_DIR:-/opt}/app/static"
+      - "django-static:${APP_ROOT_DIR:-/opt}/static"
       - ../data/files/des_archive:/des_archive
       # - /mnt/des_archive:/des_archive:ro
       - ../data/db/duckdb:/data/db

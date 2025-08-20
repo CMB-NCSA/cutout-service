@@ -279,7 +279,7 @@ class JobDetailView(DetailView):
 
 class JobFileDownloadViewSet(viewsets.ViewSet):
 
-    # permission_classes = [IsStaff | IsAdmin]
+    permission_classes = [IsAdmin | IsStaff | RunJob]
     throttle_scope = 'download'
 
     def download(self, request, job_id=None, file_path=None, *args, **kwargs):
@@ -288,10 +288,8 @@ class JobFileDownloadViewSet(viewsets.ViewSet):
         obj_key = os.path.join(settings.S3_BASE_DIR, 'jobs', job_id, file_path)
         file_path = os.path.join('/', file_path)
         response = Response()
-        # job_file = JobFile.objects.filter(job__owner__exact=self.request.user,
-        #                                   job__uuid__exact=job_id,
-        #                                   path__exact=file_path)
-        job_file = JobFile.objects.filter(job__uuid__exact=job_id,
+        job_file = JobFile.objects.filter(job__owner__exact=self.request.user,
+                                          job__uuid__exact=job_id,
                                           path__exact=file_path)
         if not job_file:
             response.data = f'File "{file_path}" not found for job {job_id}.'

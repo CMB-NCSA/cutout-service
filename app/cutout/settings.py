@@ -208,10 +208,10 @@ DATE_FORMAT = 'Y-m-d'
 
 STATIC_URL = '/static/'
 # STATIC_ROOT tells collectstatic where to copy all the static files that it collects.
-STATIC_ROOT = os.path.join(APP_ROOT_DIR, 'app', 'static')
+STATIC_ROOT = os.path.join(APP_ROOT_DIR, 'static')
 
 MEDIA_URL = '/uploads/'
-MEDIA_ROOT = os.path.join(APP_ROOT_DIR, 'app', 'uploads')
+MEDIA_ROOT = os.path.join(APP_ROOT_DIR, 'uploads')
 
 # Caching
 # https://docs.djangoproject.com/en/dev/topics/cache/#filesystem-caching

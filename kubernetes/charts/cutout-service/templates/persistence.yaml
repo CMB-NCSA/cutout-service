@@ -10,6 +10,18 @@ spec:
     requests:
       storage: {{ .Values.cutout_server.persistence.django_static.size }}
   storageClassName: "longhorn"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: metadata-db
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.data.metadata_db.size }}
+  storageClassName: {{ .Values.data.metadata_db.storageClassName | quote }}
 {{- if ne .Values.cutout_server.persistence.job_scratch.storageClass "emptyDir" }}
 ---
 kind: PersistentVolumeClaim
@@ -23,4 +35,41 @@ spec:
     requests:
       storage: {{ .Values.cutout_server.persistence.job_scratch.size }}
   storageClassName: {{ .Values.cutout_server.persistence.job_scratch.storageClass | default "longhorn" }}
+{{- end }}
+{{- if .Values.data.des_archive.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: des-archive
+spec:
+  storageClassName: nfs-manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+  selector:
+    matchLabels:
+      name: des-archive
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: des-archive
+  labels:
+    name: des-archive
+spec:
+  storageClassName: nfs-manual
+  capacity:
+    storage: 1Mi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  {{- with .Values.data.des_archive.nfs }}
+  nfs:
+    path: {{ .path }}
+    server: {{ .server }}
+    readOnly: true
+  {{- end }}
 {{- end }}

@@ -9,11 +9,22 @@ common:
     # keel.sh/trigger: "poll"
     # keel.sh/pollSchedule: "@every 10m"
 
+data:
+  metadata_db:
+    storageClassName: "longhorn"
+    size: 1Gi
+  des_archive:
+    enabled: true
+    nfs:
+      server: taiga-nfs.ncsa.illinois.edu
+      path: /taiga/ncsa/astro/des_archive
+
 cutout_server:
   enabled: true
-  replicaCount: 1
+  replicaCount: 3
   app_root_dir: /opt
   data_init: true
+  support_email: "cutout-service-support@lists.ncsa.illinois.edu"
   service:
     host: api-server
     port: 8000
@@ -22,7 +33,7 @@ cutout_server:
   django_debug: "false"
   log_level: "WARNING"
   ingress:
-    hostnames: "descut.dev.musesframework.io"
+    hostnames: "stamps.scimma.org"
     basePath: ""
   persistence:
     django_static:
@@ -69,11 +80,11 @@ cutout_server:
       cpu: '2'
       memory: 2Gi
   auth:
-    oidc_op_authorization_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/auth"
-    oidc_op_logout_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/logout"
-    oidc_op_token_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/token"
-    oidc_op_user_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/userinfo"
-    oidc_op_jwks_endpoint: "https://keycloak.musesframework.io/realms/spt3g/protocol/openid-connect/certs"
+    oidc_op_authorization_endpoint: "https://login.scimma.org/realms/SCiMMA/protocol/openid-connect/auth"
+    oidc_op_token_endpoint: "https://login.scimma.org/realms/SCiMMA/protocol/openid-connect/token"
+    oidc_op_user_endpoint: "https://login.scimma.org/realms/SCiMMA/protocol/openid-connect/userinfo"
+    oidc_op_logout_endpoint: "https://login.scimma.org/realms/SCiMMA/protocol/openid-connect/logout"
+    oidc_op_jwks_endpoint: "https://login.scimma.org/realms/SCiMMA/protocol/openid-connect/certs"
 
 object_store:
   service_url: "https://ncsa.osn.xsede.org:443"
@@ -88,7 +99,7 @@ flower:
   port: 5555
   # TODO: Consolidate the ingress spec with the oauth2-proxy config
   ingress:
-    hostname: "descut.dev.musesframework.io"
+    hostname: "stamps.scimma.org"
     basePath: flower
 
 celery:
@@ -108,7 +119,7 @@ celery:
         cpu: '4'
         memory: 4Gi
   workers:
-    replicaCount: 2
+    replicaCount: 3
     concurrency: 12
     resources:
       requests:

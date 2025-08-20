@@ -33,7 +33,7 @@ urlpatterns = [
     path('api/', include(api_urlpatterns)),
     path('jobs/', login_required(views.job_list), name='jobs-page'),
     path('jobs/<uuid:pk>', login_required(views.JobDetailView.as_view()), name='job-detail-page'),
-    path('download/<uuid:job_id>/<path:file_path>', login_required(jobfile_detail), name='download-job-file'),
+    path('download/<uuid:job_id>/<path:file_path>', jobfile_detail, name='download-job-file'),
     re_path(r"^accounts/", include("django.contrib.auth.urls")),
     path('oidc/', include("mozilla_django_oidc.urls")),
     path('token/', views.CustomAuthToken.as_view(), name='token'),
