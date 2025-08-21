@@ -1,6 +1,6 @@
 common:
   image:
-    repo: hub.ncsa.illinois.edu/des-public/cutout-service
+    repo: registry.gitlab.com/spt3g/kubernetes/cutout-service
     tag: dev
     imagePullPolicy: Always
   uid: 1000

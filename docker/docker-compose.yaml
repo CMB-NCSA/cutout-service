@@ -26,7 +26,7 @@ services:
       - django-static:/static
       - scratch:/scratch
   api-server:
-    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
+    image: registry.gitlab.com/spt3g/kubernetes/cutout-service:dev
     platform: linux/x86_64
     build:
       context: ../app
@@ -98,7 +98,7 @@ services:
       - ../app:/opt/app
 
   celery-worker:
-    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
+    image: registry.gitlab.com/spt3g/kubernetes/cutout-service:dev
     platform: linux/x86_64
     build:
       context: ../app
@@ -165,7 +165,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
+    image: registry.gitlab.com/spt3g/kubernetes/cutout-service:dev
     build:
       context: ../app
       dockerfile: ../docker/Dockerfile
@@ -196,7 +196,7 @@ services:
       - ../app:/opt/app
 
   flower:
-    image: hub.ncsa.illinois.edu/des-public/cutout-service:dev
+    image: registry.gitlab.com/spt3g/kubernetes/cutout-service:dev
     platform: linux/x86_64
     build:
       context: ../app
