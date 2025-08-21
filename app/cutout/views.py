@@ -251,7 +251,7 @@ def cutout_form(request):
 
     context = {
         # "form": form,
-        "textarea_initial": '''RA,DEC,XSIZE,YSIZE\n49.9208333333, -19.4166666667, 6.6, 3.3'''
+        "textarea_initial": '''RA,DEC,XSIZE,YSIZE\n49.9208333333, -19.4166666667, 3.3, 3.3'''
     }
     return render(request, "cutout/cutout_form.html", context)
 
