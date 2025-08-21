@@ -328,8 +328,6 @@ def task_failed(task_id=None, exception=None, args=None, traceback=None, einfo=N
         if not job.error_info:
             err_msg = f"System Error: {str(einfo)}"
             update_job_state(job_id, Job.JobStatus.FAILURE, error_info=err_msg)
-            job.error_info = err_msg
-            job.save()
         else:
             logger.error("from task_failed ==> job.error_info: " + str(job.error_info))
     except KeyError:
