@@ -22,7 +22,16 @@
           <td><a href="../jobs/{{ this_job.uuid }}">{% if this_job.name %}{{ this_job.name }}{% else %}{{ this_job.uuid | truncatechars:9 }}{% endif %}</a></td>
           <td>{{ this_job.created|date:'Y/m/d H:i:s' }}</td>
           <td class="uuid-table"><code>{{ this_job.uuid }}</code></td>
-          <td>{{ this_job.status }}</td>
+          <td>
+            {% if this_job.status == 'SUCCESS' %}
+            ✅ <span style="color: green;">
+            {% elif this_job.status == 'FAILURE' %}
+            🚫 <span style="color: red;">
+            {% else %}
+            ⏳ <span>
+            {% endif %}
+            {{ this_job.status }}</span>
+          </td>
           {% if this_job.error_info %}
           <td>
             <div class="error-msg"><code>{{ this_job.error_info }}</code></div>
