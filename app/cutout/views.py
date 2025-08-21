@@ -267,6 +267,22 @@ class JobDetailView(DetailView):
         # context["files"] = JobFile.objects.filter(job__owner__exact=self.request.user,
         #                                           job__uuid__exact=self.kwargs['pk'])
         context["files"] = JobFile.objects.filter(job__uuid__exact=job_id)
+        # Construct bulk download script
+        file_info = []
+        port = '' if settings.HOSTNAMES[0] != 'localhost' else f':{settings.API_PROXY_PORT}'
+        protocol = 'https' if settings.HOSTNAMES[0] != 'localhost' else 'http'
+        for file in context["files"]:
+            file_info.append({
+                'url': f'''{protocol}://{settings.HOSTNAMES[0]}{port}/download/{job_id}/{file.path.strip('/')}''',
+                'path': file.path.strip('/'),
+            })
+        script_context = {
+            'job_id': job_id,
+            'file_info': file_info,
+        }
+        from django.template.loader import render_to_string
+        jobfile_download_script = render_to_string('cutout/jobfile_download.sh', script_context, request=None)
+        context['jobfile_download_script'] = jobfile_download_script
         # The apparent double-newline in the CSV text rendering is not actually a bug;
         # this is how a single newline renders when using single-quotes.
         context["coords"] = self.object.config.pop('coords')
@@ -274,12 +290,13 @@ class JobDetailView(DetailView):
             self.object.config.pop(filtered_key)
         self.object.config['logfile'] = '/cutout.log'
         context["config"] = yaml.dump(self.object.config, indent=2, sort_keys=False)
+        context['job_detail_api_url'] = f'''{protocol}://{settings.HOSTNAMES[0]}{port}/api/job/{job_id}/'''
         return context
 
 
 class JobFileDownloadViewSet(viewsets.ViewSet):
 
-    permission_classes = [IsAdmin | IsStaff | RunJob]
+    # permission_classes = [IsAdmin | IsStaff | RunJob]
     throttle_scope = 'download'
 
     def download(self, request, job_id=None, file_path=None, *args, **kwargs):
@@ -288,8 +305,7 @@ class JobFileDownloadViewSet(viewsets.ViewSet):
         obj_key = os.path.join(settings.S3_BASE_DIR, 'jobs', job_id, file_path)
         file_path = os.path.join('/', file_path)
         response = Response()
-        job_file = JobFile.objects.filter(job__owner__exact=self.request.user,
-                                          job__uuid__exact=job_id,
+        job_file = JobFile.objects.filter(job__uuid__exact=job_id,
                                           path__exact=file_path)
         if not job_file:
             response.data = f'File "{file_path}" not found for job {job_id}.'

@@ -20,13 +20,15 @@ def validate_csv(value):
 
 
 class CutoutForm(forms.Form):
-    job_name = forms.CharField(label="Job name", max_length=100, initial='my-job',
+    job_name = forms.CharField(label="Job name", max_length=100, initial='',
+                               required=False,
                                widget=forms.TextInput(attrs={
                                    'placeholder': 'Job name',
                                    'style': 'width: 300px;',
                                    'class': 'form-control'}))
     job_description = forms.CharField(label="Job description", max_length=200,
-                                      initial='not your job',
+                                      initial='',
+                                      required=False,
                                       widget=forms.TextInput(attrs={
                                           'placeholder': 'Job description',
                                           'style': 'width: 300px;',
@@ -49,7 +51,7 @@ class CutoutForm(forms.Form):
     # colorset = forms.CharField(label="Color set", max_length=30, initial='i r g')
     input_csv = forms.CharField(label="Coordinates",
                                 widget=forms.Textarea(attrs={
-                                    'placeholder': '',
+                                    'placeholder': 'RA,DEC,XSIZE,YSIZE,ID\n',
                                     'style': 'width: 300px;',
                                     'class': 'form-control'}),
                                 validators=[validate_csv],

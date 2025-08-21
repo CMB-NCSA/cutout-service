@@ -13,13 +13,13 @@
             <div class="col-4 offset-1">
                 <div class="my-3">
                     <label for="id_job_name">Job name:</label>
-                    <input type="text" name="job_name" value="my-job" placeholder="Job name" style="width: 300px;"
-                        class="form-control" maxlength="100" required id="id_job_name">
+                    <input type="text" name="job_name" value="" placeholder="Job name" style="width: 300px;"
+                        class="form-control" maxlength="100" id="id_job_name">
                 </div>
                 <div class="my-3">
                     <label for="id_job_description">Job description:</label>
-                    <input type="text" name="job_description" value="not your job" placeholder="Job description"
-                        style="width: 300px;" class="form-control" maxlength="200" required id="id_job_description">
+                    <input type="text" name="job_description" value="" placeholder="Job description"
+                        style="width: 300px;" class="form-control" maxlength="200" id="id_job_description">
                 </div>
                 <div class="row">
                     <div class="col-4 offset-0">
@@ -46,7 +46,7 @@
             <div class="col-6">
                 <div class="my-3">
                     <label for="id_input_csv">Coordinates:</label>
-                    <textarea name="input_csv" rows="10" placeholder="" style="width: 100%;" class="form-control monospace-input"
+                    <textarea name="input_csv" rows="10" placeholder="RA,DEC,XSIZE,YSIZE" style="width: 100%;" class="form-control monospace-input"
                     required id="id_input_csv">{{ textarea_initial }}</textarea>
                 </div>
                 <div class="my-3">

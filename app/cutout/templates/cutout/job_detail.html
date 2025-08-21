@@ -1,5 +1,16 @@
 {% extends 'cutout/base.html' %}
 {% block content %}
+<style>
+  .script-box {
+    border: 1px solid gray;
+    padding: 1rem;
+    background-color: rgb(240, 239, 239);
+    max-height: 10rem;
+    overflow-y: scroll;
+    font-size: medium;
+    font-family: monospace;
+  }
+</style>
 <!-- <h2>Job files</h2> -->
 <h2>Job detail view</h2>
 <h3>Name: &ldquo;{% if object.name %}{{ object.name }}{% else %}{{ object.uuid | truncatechars:9 }}{% endif %}&rdquo;</h3>
@@ -8,7 +19,7 @@
 
 <div class="container">
   <div class="row pt-3">
-    <div class="col-lg-4">
+    <div class="col-lg-6">
       <h3>Info</h3>
       <p>Modified: {{ object.modified }}</p>
       <p>Status: {{ object.status }}</p>
@@ -16,10 +27,10 @@
       <h3>Description</h3>
       {{ object.description }}
       {% endif %}
-    </div>
-    <div class="col-lg-8">
       <h3>Processed coordinates</h3>
       <div style="border: 1px solid gray; padding: 1rem; background-color: rgb(240, 239, 239); max-width: 100%; max-height: 20rem; overflow-y: scroll; font-size: medium; font-family: monospace;"><pre>{{ coords }}</pre></div>
+    </div>
+    <div class="col-lg-6">
       <h3>Cutout config</h3>
       <div style="border: 1px solid gray; padding: 1rem; background-color: rgb(240, 239, 239); max-width: 100%; max-height: 20rem; overflow-y: scroll; font-size: medium; font-family: monospace;"><pre>{{ config }}</pre></div>
       {% if object.error_info %}
@@ -33,25 +44,57 @@
   <div class="row pt-3">
     {% if files %}
     <h3>Files</h3>
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Path</th>
-          <th>Size (bytes)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for job_file in files %}
-        <tr>
-          <td>
-            <code><a href="../download/{{ object.uuid }}/{{ job_file.path }}">{{ job_file.path }}</a></code>
-          </td>
-          <td class="uuid-table"><code>{{ job_file.size }}</code></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <p>Copy and paste the script below to download all job files with <code>wget</code>,
+      or click the items in the list below to download individual files. You can also <a href="{{ job_detail_api_url }}">
+        use the API explorer to fetch all job details</a>.</p>
+      <div class="container">
+      <div class="row pt-3">
+        <div class="col-1">
+          <button id="copy-jobfile-script-btn" type="button" class="btn btn-primary copy-token" 
+                  onclick="copyJobfileScript()" title="Copy to clipboard">
+            <i class="bi bi-clipboard"></i>
+          </button>
+        </div>
+        <div class="script-box col-10">
+          <pre id="jobfile-script-text">{{ jobfile_download_script }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row pt-3">
+    <div>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Size (bytes)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job_file in files %}
+          <tr>
+            <td>
+              <code><a href="../download/{{ object.uuid }}{{ job_file.path }}">{{ job_file.path }}</a></code>
+            </td>
+            <td class="uuid-table"><code>{{ job_file.size }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% endif %}
   </div>
 </div>
+{% endblock %}
+{% block extra_javascript %}
+<script>
+  function copyJobfileScript() {
+    // Get the value from the script container
+    var copyText = document.getElementById("jobfile-script-text");
+    // Copy the value to the clipboard
+    navigator.clipboard.writeText(copyText.innerHTML);
+    var copyBtn = document.getElementById("copy-jobfile-script-btn");
+    copyBtn.innerHTML = `<i class="bi bi-clipboard-check"></i>`;
+  }
+</script>
 {% endblock %}
