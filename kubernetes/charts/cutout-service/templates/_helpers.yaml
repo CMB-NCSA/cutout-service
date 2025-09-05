@@ -53,7 +53,7 @@
 - name: API_RATE_LIMIT_DOWNLOAD
   value: "{{ .Values.cutout_server.api_rate_limit.download }}"
 - name: REDIS_SERVICE
-  value: "{{ .Values.redis.fullnameOverride }}-master"
+  value: "{{ .Values.redis.fullnameOverride }}"
 - name: SUPPORT_EMAIL
   value: {{ .Values.cutout_server.support_email | quote }}
 {{- end }}
@@ -139,9 +139,9 @@
 - name: MESSAGE_BROKER_HOST
   value: {{ .Values.rabbitmq.fullnameOverride }}
 - name: MESSAGE_BROKER_PORT
-  value: {{ .Values.rabbitmq.service.ports.amqp | quote }}
+  value: {{ .Values.rabbitmq.service.amqp.port | default 5672 | quote }}
 - name: MESSAGE_BROKER_MANAGEMENT_PORT
-  value: {{ .Values.rabbitmq.service.ports.manager | quote }}
+  value: {{ .Values.rabbitmq.service.mgmt.port | default 15672 | quote }}
 - name: RABBITMQ_DEFAULT_USER
   value: {{ .Values.rabbitmq.auth.username }}
 - name: RABBITMQ_DEFAULT_PASS
