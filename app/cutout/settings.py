@@ -15,7 +15,8 @@ DJANGO_SUPERUSER_USERNAME = os.getenv('DJANGO_SUPERUSER_USERNAME', 'admin')
 APP_ROOT_DIR = os.environ.get('APP_ROOT_DIR', '/opt')
 assert os.path.isabs(APP_ROOT_DIR)
 S3_BASE_DIR = os.environ.get('S3_BASE_DIR', '').strip('/')
-CUTOUT_DATA_DB_PATH = os.getenv('CUTOUT_DATA_DB_PATH', '/data/db/des_metadata.duckdb')
+CUTOUT_DATA_DB_PATH_DES = os.getenv('CUTOUT_DATA_DB_PATH_DES', '/data/db/des_metadata.duckdb')
+CUTOUT_DATA_DB_PATH_DECA = os.getenv('CUTOUT_DATA_DB_PATH_DECA', '/data/db/desdecade_lite_metadata.duckdb')
 # Default cutout job config
 CUTOUT_DEFAULT_CONFIG_PATH = os.getenv('CUTOUT_DEFAULT_CONFIG_PATH', '')
 if os.path.isfile(CUTOUT_DEFAULT_CONFIG_PATH):

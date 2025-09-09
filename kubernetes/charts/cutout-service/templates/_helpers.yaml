@@ -13,6 +13,12 @@
   value: {{ .Values.cutout_server.des_cutter_dir | default "/" | quote }}
 - name: DES_ARCHIVE_ROOT
   value: {{ .Values.cutout_server.des_archive_root | default "/des_archive" | quote }}
+- name: DECA_ARCHIVE_ROOT
+  value: {{ .Values.cutout_server.deca_archive_root | default "/deca_archive" | quote }}
+- name: CUTOUT_DATA_DB_PATH_DES
+  value: {{ .Values.data.metadata_db.paths.des | quote }}
+- name: CUTOUT_DATA_DB_PATH_DECA
+  value: {{ .Values.data.metadata_db.paths.deca | quote }}
 - name: API_SERVER_HOST
   value: {{ .Values.cutout_server.service.host }}
 - name: API_SERVER_PORT

@@ -212,7 +212,7 @@ def generate_cutouts(job_id, config={}):
     # Check the xsize and ysizes
     xsize, ysize = fitsfinder.check_xysize(df, config, nobj)
     # connect to the DuckDB database -- via filename
-    dbh = duckdb.connect(settings.CUTOUT_DATA_DB_PATH, read_only=True)
+    dbh = duckdb.connect(settings.CUTOUT_DATA_DB_PATH_DES, read_only=True)
 
     # Get archive_root
     archive_root = fitsfinder.get_archive_root(verb=False)

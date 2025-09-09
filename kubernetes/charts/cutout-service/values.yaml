@@ -15,6 +15,9 @@ data:
   metadata_db:
     storageClassName: "longhorn"
     size: 1Gi
+    paths:
+      des: "/data/db/des_metadata.duckdb"
+      deca: "/data/db/a0ea5cb06b0ea74d0a56eac5f3efaed6/desdecade_lite_metadata.duckdb"
   des_archive:
     enabled: true
     nfs:
@@ -25,6 +28,8 @@ cutout_server:
   enabled: true
   replicaCount: 3
   app_root_dir: /opt
+  des_archive_root: "/des_archive"
+  deca_archive_root: "/deca_archive"
   data_init: true
   support_email: "cutout-service-support@lists.ncsa.illinois.edu"
   service:
