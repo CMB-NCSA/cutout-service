@@ -10,6 +10,8 @@ common:
     # keel.sh/pollSchedule: "@every 10m"
 
 data:
+  bridge:
+    enabled: false
   metadata_db:
     storageClassName: "longhorn"
     size: 1Gi

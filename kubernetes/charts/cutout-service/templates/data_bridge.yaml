@@ -1,0 +1,48 @@
+{{- if .Values.data.bridge.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: data-bridge
+spec:
+  replicas: 1
+  serviceName: data-bridge
+  selector:
+    matchLabels:
+      app: data-bridge
+  template:
+    metadata:
+      labels:
+        app: data-bridge
+    spec:
+      containers:
+      - name: bridge
+        image: registry.gitlab.com/spt3g/kubernetes/cutout-service:dev
+        imagePullPolicy: Always
+        command:
+        - /bin/bash
+        - -c
+        - |
+          mc alias set osn-des https://ncsa.osn.xsede.org/ $AWS_ACCESS_KEY_ID $AWS_SECRET_ACCESS_KEY && \
+          sleep 1000d
+        volumeMounts:
+          - name: taiga
+            mountPath: /taiga-bbfl
+            readOnly: true
+        env:
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: AWS_SECRET_ACCESS_KEY
+                name: s3-credentials
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: AWS_ACCESS_KEY_ID
+                name: s3-credentials
+      volumes:
+        - name: taiga
+          nfs:
+            server: taiga-nfs.ncsa.illinois.edu
+            path: /taiga/ncsa/radiant/bbfl/data-taiga/
+{{- end }}
