@@ -25,14 +25,14 @@
                     <div class="col-4 offset-0">
                         <div class="my-3">
                             <label for="id_xsize">Global X Size:</label>
-                            <input type="text" name="xsize" value="1" placeholder="1" style="width: 50%;" class="form-control monospace-input" required
+                            <input type="text" name="xsize" value="" placeholder="arcmin" style="width: 100%;" class="form-control monospace-input" required
                             id="id_xsize">
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="my-3">
                             <label for="id_ysize">Global Y Size:</label>
-                            <input type="text" name="ysize" value="1" placeholder="1" style="width: 50%;" class="form-control monospace-input" required
+                            <input type="text" name="ysize" value="" placeholder="arcmin" style="width: 100%;" class="form-control monospace-input" required
                                 id="id_ysize">
                         </div>
                     </div>
@@ -51,8 +51,18 @@
                 </div>
                 <div class="my-3">
                     <input type="submit" value="Generate cutouts" class="btn btn-primary">
+                    <form id="csvForm" action="/cutout/" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" id="csvInput" name="csv_file" accept=".csv" style="display:none;" onchange="document.getElementById('csvForm').submit();">
+                    <button type="button" class="btn btn-success" onclick="document.getElementById('csvInput').click();">
+                        Upload CSV
+                    </button>
+                    </form>
                 </div>
+              
             </div>
+              
+
         </div>
     </div>
 </form>
