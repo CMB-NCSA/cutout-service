@@ -204,8 +204,13 @@ def cutout_form(request):
     # if this is a POST request we need to process the form data
     if request.method == "POST":
         # create a form instance and populate it with data from the request:
-        form = CutoutForm(request.POST, request.FILES)
+        form = CutoutForm(request.POST)
         # check whether it's valid:
+        if not form.is_valid():
+            logger.error(f"Form validation failed. Errors: {form.errors}")
+        else:
+            logger.debug(f"Survey field received: {form.cleaned_data['tag']}")
+            logger.debug(f"Full cleaned_data: {form.cleaned_data}")
         if form.is_valid():
             # process the data in form.cleaned_data as required
                 
@@ -221,12 +226,15 @@ def cutout_form(request):
             input_csv = form.cleaned_data['input_csv'].replace('\r\n', '\n')
             xsize = form.cleaned_data['xsize']
             ysize = form.cleaned_data['ysize']
+            tag = form.cleaned_data['tag']
             bands = form.cleaned_data['bands']
+        
             # colorset = form.cleaned_data['colorset']
             config, err_msg = process_config(config={
                 'input_csv': input_csv,
                 'xsize': xsize,
                 'ysize': ysize,
+                'tag': tag,
                 'bands': bands,
                 # 'colorset': colorset,
             })
@@ -236,6 +244,7 @@ def cutout_form(request):
                 logger.error(f'''Invalid config: {err_msg}''')
                 new_job.delete()
                 return HttpResponseBadRequest(content=f'''Invalid config: {err_msg}''')
+            logger.debug(f"Config before save: {config}")
             new_job.config = config
             new_job.save()
             # Launch workflow as async Celery tasks

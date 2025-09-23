@@ -43,11 +43,17 @@ class CutoutForm(forms.Form):
                                    'placeholder': '1',
                                    'style': 'width: 300px;',
                                    'class': 'form-control'}))
-    bands = forms.CharField(label="Bands", max_length=30, initial='all',
-                            widget=forms.TextInput(attrs={
-                                'placeholder': 'all',
-                                'style': 'width: 300px;',
-                                'class': 'form-control'}))
+    tag = forms.ChoiceField(label="Survey",
+                            choices=[
+                                ("Y6A2", "DES"),   # backend value, frontend label
+                                ("DR3", "DECA"),
+                            ],
+                            widget=forms.RadioSelect,
+                            initial="Y6A2",
+                            required=True,)
+    bands = forms.MultipleChoiceField(choices=[('g','g'), ('r','r'), ('i','i'), ('z','z'), ('Y','Y')],
+                                    widget=forms.CheckboxSelectMultiple,
+                                    required=True)
     # colorset = forms.CharField(label="Color set", max_length=30, initial='i r g')
     input_csv = forms.CharField(label="Coordinates",
                                 widget=forms.Textarea(attrs={

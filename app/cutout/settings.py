@@ -31,6 +31,7 @@ else:
         'bands': 'all',
         'prefix': 'DES',
         'colorset': ['i', 'r', 'g'],
+        'tag': "Y6A2",
         'MP': False,
         'verbose': False,
     }
