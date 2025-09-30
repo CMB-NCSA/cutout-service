@@ -33,29 +33,29 @@ class CutoutForm(forms.Form):
                                           'placeholder': 'Job description',
                                           'style': 'width: 300px;',
                                           'class': 'form-control'}))
-    xsize = forms.IntegerField(label="X Size", initial=1,
+    xsize = forms.IntegerField(label="X Size", initial=1, required=False,
                                widget=forms.TextInput(attrs={
                                    'placeholder': '1',
                                    'style': 'width: 300px;',
                                    'class': 'form-control'}))
-    ysize = forms.IntegerField(label="Y Size", initial=1,
+    ysize = forms.IntegerField(label="Y Size", initial=1, required=False,
                                widget=forms.TextInput(attrs={
                                    'placeholder': '1',
                                    'style': 'width: 300px;',
                                    'class': 'form-control'}))
     tag = forms.ChoiceField(label="Survey",
                             choices=[
-                                ("Y6A2", "DES"),   # backend value, frontend label
+                                ("Y6A2", "DES"),  
                                 ("DR3", "DECA"),
                             ],
                             widget=forms.RadioSelect,
                             initial="Y6A2",
-                            required=True,)
+                            required=False,)
     bands = forms.MultipleChoiceField(choices=[('g','g'), ('r','r'), ('i','i'), ('z','z'), ('Y','Y')],
                                     widget=forms.CheckboxSelectMultiple,
-                                    required=True)
+                                    required=False)
     # colorset = forms.CharField(label="Color set", max_length=30, initial='i r g')
-    input_csv = forms.CharField(label="Coordinates",
+    input_csv = forms.CharField(label="Coordinates", required=False,
                                 widget=forms.Textarea(attrs={
                                     'placeholder': 'RA,DEC,XSIZE,YSIZE,ID\n',
                                     'style': 'width: 300px;',
@@ -64,3 +64,10 @@ class CutoutForm(forms.Form):
                                 initial=('''RA,DEC,XSIZE,YSIZE,ID\n'''
                                          '''0.29782658,0.029086056,3,3,1111\n'''
                                          '''1.0319154,0.026711725,3,3,1111\n'''))
+    upload_csv = forms.FileField(
+        label="Upload CSV",
+        required=False,
+        widget=forms.FileInput(attrs={'accept': '.csv'})
+    )
+    
+    

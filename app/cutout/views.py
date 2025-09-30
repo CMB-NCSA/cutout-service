@@ -204,7 +204,7 @@ def cutout_form(request):
     # if this is a POST request we need to process the form data
     if request.method == "POST":
         # create a form instance and populate it with data from the request:
-        form = CutoutForm(request.POST)
+        form = CutoutForm(request.POST, request.FILES)
         # check whether it's valid:
         if not form.is_valid():
             logger.error(f"Form validation failed. Errors: {form.errors}")
@@ -223,6 +223,13 @@ def cutout_form(request):
                 owner=request.user,
             )
             job_id = str(new_job.uuid)
+            if form.cleaned_data['upload_csv']:
+                # CSV from file upload
+                input_csv = form.cleaned_data['upload_csv'].read().decode("utf-8")
+                logger.debug(input_csv)
+            else:
+                # CSV from textarea
+                input_csv = form.cleaned_data['input_csv']
             input_csv = form.cleaned_data['input_csv'].replace('\r\n', '\n')
             xsize = form.cleaned_data['xsize']
             ysize = form.cleaned_data['ysize']

@@ -1,6 +1,14 @@
 {% extends 'cutout/base.html' %}
 {% block content %}
   <h1>Jobs</h1>
+    <div class="mb-3">
+      <label for="jobSortKey">Sort jobs by:</label>
+      <select id="jobSortKey" class="form-select" style="width: auto; display: inline-block;">
+        <option value="name">Name</option>
+        <option value="time">Time Created</option>
+        <option value="status">Status</option>
+      </select>
+    </div>
     <table class="table table-striped">
       <thead>
         <tr>
@@ -54,7 +62,45 @@
   </table>
   {% block javascript %}
   <script>
+    function sortJobsBy(key) {
+      const table = document.querySelector("table.table");
+      const tbody = table.querySelector("tbody");
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+
+      let colIndex;
+      switch (key) {
+        case "name":
+          colIndex = 0;
+          break;
+        case "time":
+          colIndex = 1;
+          break;
+        case "status":
+          colIndex = 3;
+          break;
+        default:
+          colIndex = 0;
+      }
+
+      rows.sort((a, b) => {
+        const cellA = a.cells[colIndex].innerText.trim();
+        const cellB = b.cells[colIndex].innerText.trim();
+        return cellA.localeCompare(cellB);
+      });
+
+      rows.forEach(r => tbody.appendChild(r));
+    }
+
+    document.getElementById("jobSortKey").addEventListener("change", (e) => {
+      sortJobsBy(e.target.value);
+    });
+  </script>
+
+  <script>
     deleteJob = async (jobId) => {
+        if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) {
+          return;
+        }
         let url = `/api/job/${jobId}/`;
         const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
         let headers = new Headers({
@@ -75,5 +121,6 @@
           });
       };
   </script>
+
   {% endblock %}
 {% endblock %}

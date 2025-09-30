@@ -146,7 +146,7 @@ def process_config(config):
         processed_config['coords'] = df.to_csv(index=False)
     else:
         logger.warning('No input coordinates provided.')
-        return processed_config
+        return processed_config, 'Coordinate table cannot be empty'
 
     # If the cutout size parameters are provided per-coordinate in the CSV text,
     # validate the values and ignore the global values.

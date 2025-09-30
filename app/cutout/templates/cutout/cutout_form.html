@@ -68,6 +68,33 @@
     .slider.round:before {
         border-radius: 50%;
     }
+    .tooltip-box {
+    position: relative;
+    display: inline-block;
+    }
+
+    .tooltip-box .tooltip-text {
+    visibility: hidden;
+    width: 250px;
+    background-color: #f8f9fa;
+    color: #000;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    text-align: left;
+    border-radius: 4px;
+    padding: 6px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    position: absolute;
+    z-index: 10;
+    top: -5px;   /* aligns beside button */
+    left: 120%;  /* pushes it to the right of the button */
+    }
+
+    .tooltip-box:hover .tooltip-text {
+    visibility: visible;
+    }
+
 </style>
 <form action="/cutout/" method="post">
     {% csrf_token %}
@@ -159,16 +186,44 @@
                     <textarea name="input_csv" rows="10" placeholder="RA,DEC,XSIZE,YSIZE" style="width: 100%;" class="form-control monospace-input"
                     required id="id_input_csv">{{ textarea_initial }}</textarea>
                 </div>
+                 
                 <div class="my-3">
-                    <input type="submit" value="Generate cutouts" class="btn btn-primary">
-                    <form id="csvForm" action="/cutout/" method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="file" id="csvInput" name="csv_file" accept=".csv" style="display:none;" onchange="document.getElementById('csvForm').submit();">
-                    <button type="button" class="btn btn-success" onclick="document.getElementById('csvInput').click();">
+                    <form action="/cutout/" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="submit" value="Generate cutouts" class="btn btn-primary">
+                    </form>
+
+                     <span class="tooltip-box">
+                        <i class="bi bi-question-circle" style="font-size: 1.2rem; cursor:pointer;"></i>
+                        <span class="tooltip-text">
+                            Example CSV format:<br>
+                            RA,DEC,XSIZE,YSIZE<br>
+                            49.9208, -19.4166, 3.3, 3.3<br>
+                            150.1145, 2.2058, 5.0, 5.0
+                        </span>
+                    </span>
+
+                   <div class="my-3">
+                    <input type="file" id="csvUpload" accept=".csv" style="display:none;" />
+                    <button type="button" class="btn btn-success"
+                            onclick="document.getElementById('csvUpload').click();">
                         Upload CSV
                     </button>
-                    </form>
+                    </div>
+
+                    <script>
+                    document.getElementById("csvUpload").addEventListener("change", async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const text = await file.text();
+                        // replace \r\n with \n to match backend expectations
+                        const normalized = text.replace(/\r\n/g, "\n");
+                        // put into the textarea Django already expects
+                        document.getElementById("id_input_csv").value = normalized;
+                    });
+                    </script>
                 </div>
+                
               
             </div>
               
