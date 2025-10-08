@@ -14,7 +14,7 @@ data:
     enabled: false
   metadata_db:
     storageClassName: "longhorn"
-    size: 1Gi
+    size: 4Gi
     paths:
       des: "/data/db/des_metadata.duckdb"
       deca: "/data/db/a0ea5cb06b0ea74d0a56eac5f3efaed6/desdecade_lite_metadata.duckdb"
