@@ -3,8 +3,6 @@
   value: "false"
 - name: MAKE_MIGRATIONS
   value: "false"
-- name: MAKE_MIGRATIONS
-  value: "false"
 - name: DATA_INIT
   value: {{ .Values.cutout_server.data_init | quote }}
 - name: APP_ROOT_DIR
