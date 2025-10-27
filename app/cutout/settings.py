@@ -6,7 +6,7 @@ from corsheaders.defaults import default_headers
 
 django_base_dir = Path(__file__).resolve().parent.parent
 
-APP_VERSION = '0.1.0'
+APP_VERSION = '0.2.0'
 
 # Django base settings
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"

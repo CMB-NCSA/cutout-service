@@ -73,3 +73,40 @@ spec:
     readOnly: true
   {{- end }}
 {{- end }}
+{{- if .Values.data.deca_archive.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: deca-archive
+spec:
+  storageClassName: nfs-manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+  selector:
+    matchLabels:
+      name: deca-archive
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: deca-archive
+  labels:
+    name: deca-archive
+spec:
+  storageClassName: nfs-manual
+  capacity:
+    storage: 1Mi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  {{- with .Values.data.deca_archive.nfs }}
+  nfs:
+    path: {{ .path }}
+    server: {{ .server }}
+    readOnly: true
+  {{- end }}
+{{- end }}

@@ -22,7 +22,12 @@ data:
     enabled: true
     nfs:
       server: taiga-nfs.ncsa.illinois.edu
-      path: /taiga/ncsa/astro/des_archive
+      path: /taiga/ncsa/decam/des_archive
+  deca_archive:
+    enabled: true
+    nfs:
+      server: taiga-nfs.ncsa.illinois.edu
+      path: /taiga/ncsa/decam/deca_archive
 
 cutout_server:
   enabled: true
