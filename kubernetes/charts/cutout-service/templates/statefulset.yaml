@@ -212,6 +212,11 @@ spec:
             mountPath: /des_archive
             readOnly: true
           {{- end }}
+          {{- if .Values.data.deca_archive.enabled }}
+          - name: deca-archive
+            mountPath: /deca_archive
+            readOnly: true
+          {{- end }}
         {{- with  .Values.celery.workers.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -253,6 +258,11 @@ spec:
         - name: des-archive
           persistentVolumeClaim:
             claimName: des-archive
+        {{- end }}
+        {{- if .Values.data.deca_archive.enabled }}
+        - name: deca-archive
+          persistentVolumeClaim:
+            claimName: deca-archive
         {{- end }}
       affinity:
         nodeAffinity:
